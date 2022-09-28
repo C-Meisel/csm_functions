@@ -165,10 +165,10 @@ def get_init_v(folder_loc:str, fc:bool = True) -> float:
         or an electrolysis cell stability test.
         set to False to find the first value of an electrolysis cell mode stability test.
 
-    Returns --> The average OCV of the first OCV data file as a float.
+    Returns --> The average voltage of the first galvanostatic hold data file as a float.
     '''
     
-    # ----- Finding the first OCV file
+    # ----- Finding the first galvanostatic file
     files = os.listdir(folder_loc)
 
     if fc == True:
@@ -181,7 +181,7 @@ def get_init_v(folder_loc:str, fc:bool = True) -> float:
             if file.find('ECstability__#1.DTA')!=-1 and file.find('GS')!=-1:
                 file1 = os.path.join(folder_loc,file)
 
-    # ----- Finding the average OCV and returning it
+    # ----- Finding the average galvanostatic and returning it
     dta2csv(file1)
     loc_csv = file1.replace('.DTA','') + '.csv'
     file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t")

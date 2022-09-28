@@ -1,6 +1,6 @@
 ''' 
 This module contains all other functions that I made for analyzing data.
-They mostly pertain to random charactarization techniques or software.
+They mostly pertain to random characterization techniques or software.
 
 # C-Meisel
 '''
@@ -20,14 +20,14 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 def ms_df_tc(loc:str)->pd.DataFrame: 
     '''
-    Takes a CSV file from the prima DB and turnes it into a df with the useful materials and
+    Takes a CSV file from the prima DB and turns it into a df with the useful materials and
     converts time into relative time from the first measurement taken
-    ms = mass spec, df = dataframe, tc = time converter
+    ms = mass spec, df = DataFrame, tc = time converter
     
     Param loc, str: (path to a file)
         Location of the CSV file containing the mass spec data
 
-    Return --> a dataframe containing the desired time values
+    Return --> a DataFrame containing the desired time values
     '''
     # Time conversion
     df = pd.read_csv(loc)
@@ -39,7 +39,7 @@ def ms_df_tc(loc:str)->pd.DataFrame:
 
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "Drycal Functions"
-'Functions to help me format data from the Drycals used to calculate gas flow'
+'Functions to help me format data from the Drycal used to calculate gas flow'
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 def plot_drycal_flow(loc_excel:str, sheet:str): 
     '''
@@ -55,8 +55,8 @@ def plot_drycal_flow(loc_excel:str, sheet:str):
     
     df = pd.read_excel(loc_excel,sheet,skiprows=3)
     flow = df['DryCal scc/min ']
-    time= [int(t.strftime('%s')) for t in df['Time'].to_numpy()] #Converts the date time into an integer array of seconds from epoc
-    #Each time in df_dc_c1['Time'] is converted into seconds from epoc and then converted into an integer. 
+    time= [int(t.strftime('%s')) for t in df['Time'].to_numpy()] #Converts the date time into an integer array of seconds from epoch
+    #Each time in df_dc_c1['Time'] is converted into seconds from epoch and then converted into an integer. 
     # df_dc_c1['Time'] is first converted into an array in numpy
     
     t0 = time[0] #Gets first time
@@ -72,7 +72,7 @@ def plot_drycal_flow(loc_excel:str, sheet:str):
 
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "Gas Chromatography Functions"
-'Functions to help me format data from the gas chromatagropher (GC) and plot it'
+'Functions to help me format data from the gas chromatograph (GC) and plot it'
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 def plot_gc(loc_excel:str, sheet:str):
     '''
@@ -131,12 +131,12 @@ def eds_line_plot(loc_csv:str, only:list = [''], reverse:bool = False,
     Return --> None but a plot is generated and shown
     '''
     
-    file = csv.reader(open(loc_csv, "r",encoding='latin1'),delimiter=',') #enables the file to be read by pytoh
+    file = csv.reader(open(loc_csv, "r",encoding='latin1'),delimiter=',') #enables the file to be read by python
     for row in file: #searches for start of data
         if row[0] == 'Point': #string in first column in the row where the data starts
             skip = file.line_num-1
             break
-    df = pd.read_csv(loc_csv,sep= ',',skiprows=skip,encoding='latin1',index_col=False) #creates dataframe, in this case sep needs to be ,
+    df = pd.read_csv(loc_csv,sep= ',',skiprows=skip,encoding='latin1',index_col=False) #creates DataFrame, in this case sep needs to be ,
     df.drop(columns=['Point',' Image',' Frame'],inplace=True) #Drops values that are not needed 
 
     if sort_bczyyb == True:
@@ -161,11 +161,11 @@ def eds_line_plot(loc_csv:str, only:list = [''], reverse:bool = False,
         for col in cols: #Plots all of the columns
             ax.plot(df[' Distance (um)'],df[col],label = col,linewidth=2)
 
-    elif len(only[0])>=1: #if certain elements are speficied then those elemens will be
+    elif len(only[0])>=1: #if certain elements are specified then those elements will be
         col_new = []
-        for atom in cols: #Seraches through all the elements
+        for atom in cols: #Searches through all the elements
             for element in only: #searches through all the selected elements
-                if atom.find(element+' ')!=-1: #if the selected element matches with one of the elements in the datatset
+                if atom.find(element+' ')!=-1: #if the selected element matches with one of the elements in the dataset
                     col_new.append(atom) # appending the matching element to a new element list
                     break
 
@@ -210,7 +210,7 @@ def eds_mapping(folder_loc:str):
     data = [file for file in os.listdir(folder_loc) if file.endswith('.csv')]
     data.remove("ZafWt 1_Field of View.csv")
 
-    # ----- Sorting the datafiles:
+    # ----- Sorting the data files:
     i = 0
 
     for file in data:
@@ -269,7 +269,7 @@ def eds_mapping(folder_loc:str):
             scale = df_header.iloc[0,10]*1000 # in microns
 
 
-            # --- Converting the data to a dataframe and obtaining the element name
+            # --- Converting the data to a DataFrame and obtaining the element name
             df = pd.read_csv(element_data,skiprows=5,header=None,encoding='latin1').iloc[:, 1:]
             df.drop(df.columns[len(df.columns)-1], axis=1, inplace=True)
             df = df.transpose()
@@ -319,22 +319,22 @@ def eds_mapping(folder_loc:str):
 
 def sort_bczyyb_eds(df:pd.DataFrame):
     '''
-    Takes a dataframe of EDS line data, sorts it such that the first eleements are 
+    Takes a DataFrame of EDS line data, sorts it such that the first elements are 
     Ba, Ce, Zr, Y, Yb, Ni, O, and then the rest of the elements are in alphabetical order
     If one of the BCZYYb Ni, O elements are not in the data frame, it will not be included and there
     will be no error
 
     Parameters
     ----------
-    df, pd.dataframe:
-        dataframe of EDS line data
+    df, pd.DataFrame:
+        DataFrame of EDS line data
     
     Return:
     -------
-    df --> The new dataframe with the columns sorted the desired way
-    cols --> The list of the columns in the new dataframe without distance
+    df --> The new DataFrame with the columns sorted the desired way
+    cols --> The list of the columns in the new DataFrame without distance
     '''
-    df = df.reindex(sorted(df.columns), axis=1) #sorts elements aplphabetically
+    df = df.reindex(sorted(df.columns), axis=1) #sorts elements alphabetically
 
     Ba_column = df.pop(' Ba L') # Barium to first spot
     df.insert(0, ' Ba L', Ba_column)
@@ -380,14 +380,14 @@ def haadf_eds_map(folder_loc:str):
     '''
     Function for plotting EDS STEM HAADF maps. This function plots the image
     and the chemical maps, using the turbo cmap, for all the chemical eds map files
-    in the selected folder. This function also sortes and plots the BCZYYbNiO atoms first.
+    in the selected folder. This function also sorts and plots the BCZYYbNiO atoms first.
     The element files do need to be text files (the talos defaults to BMP)
 
     This function is mostly done and is functional but future additions include:
     - being able to select specific atoms to plot in the function call
-    - The choice of whetehr or not to sort by BCZYYb
+    - The choice of whether or not to sort by BCZYYb
     - Taking away the black bars from the tops of the image
-    - Figureing out a way to include the scale bar on the origional HAADF image
+    - Figuring out a way to include the scale bar on the original HAADF image
 
     Parameters
     ----------
@@ -402,7 +402,7 @@ def haadf_eds_map(folder_loc:str):
     # ---
     data = [file for file in os.listdir(folder_loc) if file.endswith('.txt')]
 
-    # ----- Sorting the datafiles:
+    # ----- Sorting the data files:
     i = 0
 
     for file in data:
@@ -457,11 +457,14 @@ def haadf_eds_map(folder_loc:str):
     if len(data) > 4 and len(data) <= 6:
         fig, axs = plt.subplots(2,3)
         fig.set_size_inches(11, 7)
+    
     if len(data) > 6 and len(data) <=8:
         fig, axs = plt.subplots(2,4)
         fig.set_size_inches(10, 5)
+    
     if len(data) == 9:
         fig,axs = plt.subplots(3,3)
+    
     if len(data) > 9 and len(data) <= 12:
         fig,axs = plt.subplots(2,6)
         fig.set_size_inches(14, 5)
@@ -483,7 +486,7 @@ def haadf_eds_map(folder_loc:str):
             plt.tight_layout()
         
         elif idx <= len(data)-1:
-            # --- Converting the data to a dataframe and obtaining the element name
+            # --- Converting the data to a DataFrame and obtaining the element name
             image_loc = os.path.join(folder_loc, data[idx])
             df = pd.read_csv(image_loc,header=None,encoding='latin1',sep=';')
             element = os.path.basename(image_loc).split("_", 4)[3].split('.',2)[0]
@@ -517,7 +520,6 @@ def haadf_eds_map(folder_loc:str):
     plt.show()
 
 
-
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "Particle size analyzer (PSA) functions"
 'Functions to help me format and plot data from the PSA in Hill Hall 375'
@@ -533,8 +535,8 @@ def psa_d50(loc:str)->float:
     Return --> D50, float
     '''
     
-    # --- Making a dataframe for the useful data
-    df = pd.read_excel(loc,'Sheet1',skiprows=25,nrows=10) #The percentiles alwayas start at row 26 and will only need 10 rows
+    # --- Making a DataFrame for the useful data
+    df = pd.read_excel(loc,'Sheet1',skiprows=25,nrows=10) #The percentiles always start at row 26 and will only need 10 rows
     
     # --- returning the D50
     d50 = df[df['%Tile']==50].iloc[0,2] #This returns a float. Looks through df %tile column for 50 then returns the value in column 3 (2+1)
@@ -548,13 +550,13 @@ def psa_plot(loc:str, plot_d50:bool=True):
     Param loc, str: (path to a file)
         Location of the excel file containing the PSA data
     Param plot_d50, bool: (Default = True)
-        If True, the D50 will be plotted on the plot as a verticle line
+        If True, the D50 will be plotted on the plot as a vertical line
     
     Return --> None but a plot is created and shown
     '''
     
     df = pd.read_excel(loc,'Sheet1',skiprows=68) #the sheet will always be called sheet 1 and the data will always start at row 69 (nice)
-    d50 = psa_d50(loc) # retreives d50
+    d50 = psa_d50(loc) # retrieves d50
 
     # --- Plotting
     fig,ax = plt.subplots()
@@ -598,8 +600,60 @@ def psa_plots(list:list):
     plt.show()
 
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+"LEIS"
+'Functions to help me format and plot Low energy ion scattering (LEIS) data from the IONTOF in the SEEL building at CU Boulder'
+#/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+def leis_plot(data_loc:str,label:str, normalize:bool=False, **plot_args):
+    '''
+    Plots LEIS data from a text file gathered from an IONTOF LEIS machine
+    To plot multiple plots on the same figure, just stack these functions on top of each other
+
+    Parameters:
+    -----------
+    data_loc, str:
+        Location of the text file containing the LEIS data
+    label, str:
+        The label for the given data in the plot legend
+    normalize, bool: (Default = False)
+        Whether or not to normalize the data to the highest value in the data
+    plot_args,dict: 
+        Any arguments that are passed to the plot function.
+    '''
+
+    # ~~~~~ Creating a DataFrame from the text file
+    df = pd.read_csv(data_loc, header=None, encoding='latin1', sep = '\t',
+                        names = ['Energy (eV)','Intensity'])
+    
+    # ~~ Formatting data if desired:
+    if normalize ==True:
+        maximum = df['Intensity'].max()
+        df['Intensity'] = df['Intensity']/maximum
+
+
+    # ~~~~~ Plotting
+    with plt.rc_context({"axes.spines.right": False, "axes.spines.top": False}):
+        plt.plot(df['Energy (eV)'],df['Intensity'],'-',**plot_args, label = label) #plots data
+
+    # ~ Axis labels
+    plt.xlabel('Energy (eV)',size=18) #\u00D7
+    if normalize == True:
+        plt.ylabel('Relative Intensity',size=18)
+    else:
+        plt.ylabel('Intensity',size=18)
+        
+    plt.legend(loc='best',fontsize='x-large')
+
+
+    # ~~~~~ Excessive Plot formatting
+    plt.tick_params(left = False)
+    plt.yticks([])
+    plt.xticks(fontsize=14)
+
+    plt.tight_layout()
+
+#/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "EPMA"
-'Functions to help me format and plot Electron Probe Microanalyzer (EPMA) data taken at KICET in South Korea'
+'Functions to help me format and plot electron probe micro analyzer (EPMA) data taken at KICET in South Korea'
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 def epma_plots(folder:str, sem:bool = True):
     '''
@@ -611,19 +665,19 @@ def epma_plots(folder:str, sem:bool = True):
     folder, str: (path to directory)
         Location of the file containing the EPMA data for a sample
     sem, bool: (Default = True)
-        Plots the Secendary Electron (SEI) and Back Scattered Electron (COMPO) images of the cell
+        Plots the Secondary Electron (SEI) and Back Scattered Electron (COMPO) images of the cell
         where the elemental data was taken.
 
     Return --> None, but a plot of plots is created and shown
     '''
 
-    # --- Extracting all datafiles from the folder:
+    # --- Extracting all data files from the folder:
     if sem == False:
         data = [file for file in os.listdir(folder) if file.endswith('La.csv')]
     elif sem == True:
         data = [file for file in os.listdir(folder) if file.endswith('.csv')]
 
-    # ----- Sorting the datafiles:
+    # ----- Sorting the data files:
     i = 0
     for file in data:
         if file.find('Ba') != -1:
@@ -687,7 +741,7 @@ def epma_plots(folder:str, sem:bool = True):
         if idx <= len(data)-1 and data[idx].find('SEI')==-1 and data[idx].find('COMPO')==-1:
             element_data = os.path.join(folder,data[idx])
 
-            # --- Converting the data to a dataframe and obtaining the element name
+            # --- Converting the data to a DataFrame and obtaining the element name
             df = pd.read_csv(element_data,header=None,encoding='latin1')
             element = os.path.basename(element_data).split("_", 2)[1]
 
@@ -727,7 +781,7 @@ def epma_plots(folder:str, sem:bool = True):
         elif idx <= len(data)-1 and sem == True and (data[idx].find('SEI')!=-1 or data[idx].find('COMPO')!=-1):
             image = os.path.join(folder,data[idx])
 
-            # --- Converting the data to a dataframe and obtaining the element name
+            # --- Converting the data to a DataFrame and obtaining the element name
             df = pd.read_csv(image,header=None,encoding='latin1')
             if data[idx].find('SEI')!=-1:
                 image_type = os.path.basename(image).split("_", 1)[1].replace('.csv','')

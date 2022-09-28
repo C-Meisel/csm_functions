@@ -29,7 +29,7 @@ from .data_formatting import peis_data
 
 
 def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float, 
-                        plot_ocv:bool = True, title:bool = True): #Recently hasnt beeen working Jan21
+                        plot_ocv:bool = True, title:bool = True): #Recently has not been working Jan21
     '''
     Plots the ohmic, polarization (Rp), and total resistance of a cell over time.
     The data is obtained from a gamry sequence that periodically takes EIS of a cell over time
@@ -37,7 +37,7 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
     If eis is taken at OCV and Bias, this function will make a plot for each condition.
 
     This function also saves the resistance data to a sheet in an excel file for this cell
-    If the excel file doesnt exist, this funciton will create it. 
+    If the excel file does not exist, this function will create it. 
     If the sheet already exists, this function will plot the existing data in the sheet.
 
     param folder_loc, string: 
@@ -66,15 +66,15 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
         if ((file.find('Deg_#1.DTA')!=-1) or (file.find('Deg__#1.DTA')!=-1)) and (file.find('OCV')!=-1): #Finding the first file of the test, this is the OCV file at the start of the cycle
             file1 = os.path.join(folder_loc,file) #creates full file path
             T0_stamp = fl.get_timestamp(file1) #gets time stamp from first file
-            t0 = int(T0_stamp.strftime("%s")) #Conveting Datetime to seconds from Epoch and converts to an integer
+            t0 = int(T0_stamp.strftime("%s")) #Converting Datetime to seconds from Epoch and converts to an integer
 
-    'Creating a dataframe and adding an excel data sheet (or creating the file if need be)'
+    'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'
     excel_name = '_' + cell_name + '_Data.xlsx'
     excel_file = os.path.join(folder_loc,excel_name)
     sheet_name = 'Bias Resistance Deg'
     bias_deg_data = False
 
-    if os.path.exists(excel_file)==True: # Looing for the data excel file in the button cell folder
+    if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
         writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
         wb = load_workbook(excel_file, read_only=True) # Looking for the bias Deg eis
         if sheet_name in wb.sheetnames:
@@ -87,7 +87,7 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
         bias_fits = [f for f in os.listdir(jar_bias) if not f.startswith('.')] # Basically OS.listdir, but it excludes the hidden files (like .DS_Store)
         bias_fits = natsort.humansorted(bias_fits,key=lambda y: (len(y),y)) #This list comprehension came from stacked overflow
         
-        bias_info = [] #initalizing list to store the ohmic,rp, and time of the eis fits under bias
+        bias_info = [] #initializing list to store the ohmic,rp, and time of the eis fits under bias
 
         for fit in bias_fits:
             # --- Initializing the inverter:
@@ -99,11 +99,11 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
             rp = inv.predict_Rp()*area #Ohm*cm^2
             rtot = ohmic+rp #Ohm*cm^2
 
-            # --- Extracting the time values from the origional EIS files NOT the fits
+            # --- Extracting the time values from the original EIS files NOT the fits
             identifier = fit[fit.find('_Bias')+len('_Bias'):fit.rfind('.pkl')]
             for file in peis_deg_files:
                 if (file.find('Bias')!=-1) and (file.find(identifier)!=-1): 
-                    #searching through all relavent EIS files in the main folder, the first statements narrow down the bias EIS files
+                    #searching through all relevant EIS files in the main folder, the first statements narrow down the bias EIS files
                     #The last statement identifies the file of choice
                     file_time = int(fl.get_timestamp(os.path.join(folder_loc,file)).strftime("%s")) #Extract time of file, converts to seconds from epoch, and converts from a str to an int
                     deg_time = (file_time-t0)/3600 # (hrs) subtracts from start time to get time from start of deg test in hours
@@ -113,7 +113,7 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
             bias_info.append(info) #appends newly made tuple to list of all information
 
         df = pd.DataFrame(bias_info, columns=['ohmic', 'rp', 'rtot','time (hrs)'])
-        df.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this dataframe to a specific worksheet
+        df.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
         writer.save() # Close the Pandas Excel writer and output the Excel file.
 
     elif bias_deg_data == True:
@@ -129,18 +129,18 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
     ax.tick_params(axis='both', which='major', labelsize='large')
     if title == True: #if titles are desired one will be printed on the graph
         plt.title('Evolution under bias',size='x-large')
-    plt.tight_layout() #keeps everhting in the figure frame
+    plt.tight_layout() #keeps everything in the figure frame
     ax.set_ylim(ymin=0) #Ensures the Y values on the graph start at 0
     plt.legend() #Shows Legend
     plt.show()
 
-    'Extracting and plotting ocv results (if aquired and desired)'
+    'Extracting and plotting ocv results (if acquired and desired)'
     if plot_ocv == True:
         # ----- Extracting Ohmic, Rp, and time for each fit ----- #
         ocv_fits = [f for f in os.listdir(jar_ocv) if not f.startswith('.')] # Basically OS.listdir, but it excludes the hidden files (like .DS_Store)
-        ocv_info = [] #initalizing list to store the ohmic,rp, and time of the eis fits under bias
+        ocv_info = [] #initializing list to store the ohmic,rp, and time of the eis fits under bias
 
-        'Creating a dataframe and adding an excel data sheet (or creating the file if need be)'
+        'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'
         excel_name = '_' + cell_name + '_Data.xlsx' #Same as before
         excel_file = os.path.join(folder_loc,excel_name) #Same as before
         sheet_name = 'OCV Resistance Deg'
@@ -153,7 +153,7 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
             ocv_fits = natsort.humansorted(ocv_fits,key=lambda y: (len(y),y))
         
             #The above list comprehension came from stacked overflow
-            bias_info = [] #initalizing list to store the ohmic,rp, and time of the eis fits under bias
+            bias_info = [] #initializing list to store the ohmic,rp, and time of the eis fits under bias
             for fit in ocv_fits:
                 # --- Initializing the inverter:
                 inv = Inverter() #Initializes inverter object
@@ -164,11 +164,11 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
                 rp = inv.predict_Rp()*area # Ohm*cm^2
                 rtot = ohmic+rp # Ohm*cm^2
 
-                # --- Extracting the time values from the origional EIS files NOT the fits
+                # --- Extracting the time values from the original EIS files NOT the fits
                 identifier = fit.split('_OCV')[1].split('.pkl')[0]
                 for file in files:
                     if (file.find('PEIS')!=-1) and (file.find('_Deg')!=-1) and (file.find('Bias')==-1) and (file.find('.DTA')!=-1) and (file.find(identifier)!=-1): 
-                        #searching through all relavent EIS files in the main folder, the first 4 statements narrow down the search to relavent EIS files
+                        #searching through all relevant EIS files in the main folder, the first 4 statements narrow down the search to relevant EIS files
                         #The last statement identifies the file of choice
                         file_time = int(fl.get_timestamp(os.path.join(folder_loc,file)).strftime("%s")) #Extract time of file, converts to seconds from epoch, and converts from a str to an int
                         deg_time = (file_time-t0)/3600 # (hrs) subtracts from start time to get time from start of deg test in hours
@@ -178,7 +178,7 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
                 ocv_info.append(info) #appends newly made tuple to list of all information
             
             df = pd.DataFrame(ocv_info, columns=['ohmic', 'rp', 'rtot', 'time (hrs)'])
-            df.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this dataframe to a specific worksheet
+            df.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
             writer.save() # Close the Pandas Excel writer and output the Excel file.
 
         elif bias_deg_data == True:
@@ -194,7 +194,7 @@ def plot_resistanceDeg(folder_loc:str, jar_bias:str, jar_ocv:str, area:float,
         ax.tick_params(axis='both', which='major', labelsize='large')
         if title == True: #if titles are desired one will be printed on the graph
             plt.title('Evolution under OCV',size='x-large')
-        plt.tight_layout() #keeps everhting in the figure frame
+        plt.tight_layout() #keeps everything in the figure frame
         ax.set_ylim(ymin=0) #Ensures the Y values on the graph start at 0
         plt.legend() #Shows Legend
         plt.show()
@@ -220,23 +220,25 @@ def standard_performance(loc:str, jar:str, area:float=0.5, **peis_args):
     cell_name = os.path.basename(loc).split("_", 1)[0] #gets the name of the cell
 
     # --- Fitting DRT, and making sure I am not re-fitting it if it has already been fit
-    pickel_jar = os.listdir(jar)
-    pickel_name = 0
+    pickle_jar = os.listdir(jar)
+    pickle_name = 0
     fit_name = cell_name+'_map_fit_standard.pkl'
-    for pickel in pickel_jar: # checks to see if this has already been fit, if so name gets set to 1
-        if fit_name == pickel:
-            pickel_name = pickel_name + 1
+    for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+        if fit_name == pickle:
+            pickle_name = pickle_name + 1
             break
 
-    if pickel_name == 0:
+    if pickle_name == 0:
         map_drt_save(loc,jar,fit_name)
 
     # ---- Loading DRT and plotting
     inv = Inverter()
     inv.load_fit_data(os.path.join(jar,fit_name))
+    
     fig, ax = plt.subplots()
     bp.plot_distribution(None,inv,ax,unit_scale='',label=cell_name)
     ax.legend()
+    
     plt.tight_layout()
     plt.show()
 
@@ -256,7 +258,7 @@ def po2_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=
     Searches through the folder_loc for all the changes in O2 concentration EIS files.
     Map-fits all of hte eis files and saves them to fit_path. If the files are already fit, they will not be re-fit.
     Plots the EIS for each concentration in one plot if eis=True and the DRT of each concentration in another if drt=True
-    If O2_dependence = True, plots the ln(1/ASR) vs. ln(O2 concnentration) for the ohmic and polarization resistance
+    If O2_dependence = True, plots the ln(1/ASR) vs. ln(O2 concentration) for the ohmic and polarization resistance
 
     Parameters:
     -----------
@@ -364,24 +366,26 @@ def po2_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=
         ax.legend()
         plt.show()
 
-        'Creating a dataframe and adding an excel data sheet (or creating the file if need be)'
+        'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'
         excel_name = '_' + cell_name + '_Data.xlsx'
         excel_file = os.path.join(folder_loc,excel_name)
         sheet_name = 'pO2'
         exists = False
 
-        if os.path.exists(excel_file)==True: # Looing for the data excel file in the button cell folder
+        if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
             writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
             wb = load_workbook(excel_file, read_only=True) # Looking for the po2
+            
             if sheet_name in wb.sheetnames:
                 exists = True
+        
         elif os.path.exists(excel_file)==False:
             writer = pd.ExcelWriter(excel_file,engine='xlsxwriter') #Creates a Pandas Excel writer using XlsxWriter as the engine. This will make a new excel file
 
         if exists == False:
             df_po2 = pd.DataFrame(list(zip(O2_conc*100,ohmic_asr,rp_asr)),
                 columns =['O2 Concentration (%)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
-            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this dataframe to a specific worksheet
+            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
             writer.save() # Close the Pandas Excel writer and output the Excel file.
 
     ' ------ Plotting the Oxygen dependence'
@@ -404,9 +408,9 @@ def po2_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=
         exists, writer = excel_datasheet_exists(excel_file,peak_data_sheet)
         
         if exists == False: # Make the excel data list
-            # --- Fitting peaks and appending to a dataframe
-            df_tau_r = pd.DataFrame(columns = ['O2 Concentration (%)','Tau','Resistance']) #Initalizing datframe to save temperature
-            for fit in o2_map_fits: #Loading DRT, fitting peaks, and saving to a dataframe
+            # --- Fitting peaks and appending to a DataFrame
+            df_tau_r = pd.DataFrame(columns = ['O2 Concentration (%)','Tau','Resistance']) #Initializing DataFrame to save temperature
+            for fit in o2_map_fits: #Loading DRT, fitting peaks, and saving to a DataFrame
                 # creating inverter and calling fits
                 inv = Inverter()
                 inv.load_fit_data(os.path.join(fit_path,fit))
@@ -428,14 +432,14 @@ def po2_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=
             df_tau_r.to_excel(writer, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
             writer.save() # Close the Pandas Excel writer and output the Excel file.
 
-        elif exists == True: #load the data into a dataframe
+        elif exists == True: #load the data into a DataFrame
             df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
         
         # ----- plotting
         palette = sns.color_palette('crest_r', as_cmap=True)
         plot = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df_tau_r, hue='O2 Concentration (%)',palette = palette,s=69)
 
-        # ----- Astetic stuff
+        # ----- Ascetics stuff
         sns.set_context("talk")
         fontsize = 14
         sns.despine()
@@ -451,11 +455,11 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
     Finds all EIS files in the folder_loc taken during bias testing in Fuel Cell mode and plots the EIS
     The corresponding DRT fits are located and also plotted if drt = True
     If drt_peaks = True, the DRT spectra are fit, and the resistance of each DRT peak at each condition is plotted
-    All data is appened to a sheet in the cell data excel file if it does not already exist. If the data
+    All data is append to a sheet in the cell data excel file if it does not already exist. If the data
     does already exist that data is called upon for plotting
 
     The .DTA EIS files are taken during a Gamry sequence that I use for testing the cell performance under
-    varius biases
+    various biases
 
     Parameters:
     -----------
@@ -485,7 +489,7 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
     'Finding correct files and formatting'
     dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
     bias_eis = [] #initializing bias files list
-    for file in dta_files: #Finding all fuel celp bias EIS files
+    for file in dta_files: #Finding all fuel cell bias EIS files
         if (file.find('PEIS')!=-1) and (file.find('bias.DTA')!=-1) and (file.find('_n')!=-1):
             bias_eis.append(os.path.join(folder_loc,file))
     cell_name = os.path.basename(fit_path).split("_", 2)[1]
@@ -500,7 +504,8 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
         # --- Setting up the color map
         cmap = plt.cm.get_cmap('plasma') #cmr.redshift 
         color_space = np.linspace(0.2,0.8,len(bias_eis)) # array from 0-1 for the colormap for plotting
-        c = 0 # indicie of the color array
+        c = 0 # index of the color array
+
         for peis in bias_eis:
             # --- Finding and formatting
             loc = os.path.join(folder_loc, peis) # creates the full path to the file
@@ -523,7 +528,7 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
         # --- Setting up the color map
         cmap = plt.cm.get_cmap('plasma') #cmr.redshift 
         color_space = np.linspace(0.2,0.8,len(bias_eis)) # array from 0-1 for the colormap for plotting
-        c = 0 # indicie of the color array
+        c = 0 # index of the color array
 
         # --- Initializing lists of data to save
         bias_array = np.array([]) # Applied bias of the eis spectra relative to OCV
@@ -552,13 +557,13 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
         ax.legend()
         plt.show()
         
-        'Creating a dataframe and adding an excel data sheet (or creating the file if need be)'
+        'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'
         excel_name = '_' + cell_name + '_Data.xlsx'
         excel_file = os.path.join(folder_loc,excel_name)
         sheet_name = 'FC mode data'
         exists = False
 
-        if os.path.exists(excel_file)==True: # Looing for the data excel file in the button cell folder
+        if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
             writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
             wb = load_workbook(excel_file, read_only=True) # Looking for the po2
             if sheet_name in wb.sheetnames:
@@ -569,7 +574,7 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
         if exists == False:
             df_fc_bias = pd.DataFrame(list(zip(bias_array,ohmic_asr,rp_asr)),
                 columns =['Applied Bias (V)','Ohmic ASR (ohm*cm^2)', 'Rp ASR (ohm*cm^2)'])
-            df_fc_bias.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this dataframe to a specific worksheet
+            df_fc_bias.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
             writer.save() # Close the Pandas Excel writer and output the Excel file.
 
     ' --- DRT peak fitting and plotting --- '
@@ -584,7 +589,7 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
         excel_file = os.path.join(folder_loc,excel_name)
         peak_data_sheet = 'FC Bias DRT peak fits'
 
-        if os.path.exists(excel_file)==True: # Looing for the data excel file in the button cell folder
+        if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
             writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
             wb = load_workbook(excel_file, read_only=True) # Looking for the Arrhenius Data Sheet
             if peak_data_sheet in wb.sheetnames:
@@ -593,9 +598,9 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
             writer = pd.ExcelWriter(excel_file,engine='xlsxwriter') #Creates a Pandas Excel writer using XlsxWriter as the engine. This will make a new excel file
         
         if peak_data == False: # Make the excel data list
-            # --- Fitting peaks and appending to a dataframe
-            df_tau_r = pd.DataFrame(columns = ['Bias','Tau','Resistance']) #Initalizing datframe to save temperature
-            for fit in bias_map_fits: #Loading DRT, fitting peaks, and saving to a dataframe
+            # --- Fitting peaks and appending to a DataFrame
+            df_tau_r = pd.DataFrame(columns = ['Bias','Tau','Resistance']) #Initializing DataFrame to save temperature
+            for fit in bias_map_fits: #Loading DRT, fitting peaks, and saving to a DataFrame
                 # creating inverter and calling fits
                 inv = Inverter()
                 inv.load_fit_data(os.path.join(fit_path,fit))
@@ -621,7 +626,7 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
             df_tau_r.to_excel(writer, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
             writer.save() # Close the Pandas Excel writer and output the Excel file.
 
-        elif peak_data == True: #load the data into a dataframe
+        elif peak_data == True: #load the data into a DataFrame
             df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
 
         # ----- plotting
@@ -629,7 +634,7 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
         palette = sns.color_palette(cmap)
         plot = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df_tau_r, hue='Bias',palette = palette,s=69)
 
-        # ----- Astetic stuff
+        # ----- Aesthetic stuff
         sns.set_context("talk")
         fontsize = 14
         sns.despine()
@@ -642,13 +647,13 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
 def ec_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True,
                 drt:bool=True, ncol:int=1, legend_loc:str='best'):
     '''
-    Finds all EIS files in the folder_loc taken during bias testing in Electrollysis cell mode and plots the EIS
+    Finds all EIS files in the folder_loc taken during bias testing in Electrolysis cell mode and plots the EIS
     The corresponding DRT fits are located and also plotted if drt = True
-    All data is appened to a sheet in the cell data excel file if it does not already exist. If the data
+    All data is append to a sheet in the cell data excel file if it does not already exist. If the data
     does already exist that data is called upon for plotting
 
     The .DTA EIS files are taken during a Gamry sequence that I use for testing the cell performance under
-    varius biases
+    various biases
 
     param folder_loc, str: The folder location of the EIS files (path to directory)
     param fit_path, str: The folder location of the DRT fits (path to directory)
@@ -665,9 +670,11 @@ def ec_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True,
     'Finding correct files and formatting'
     dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
     bias_eis = [] #initializing bias files list
-    for file in dta_files: #Finding all fuel celp bias EIS files
+
+    for file in dta_files: #Finding all fuel cell bias EIS files
         if (file.find('PEIS')!=-1) and (file.find('bias.DTA')!=-1) and (file.find('_n')==-1):
             bias_eis.append(os.path.join(folder_loc,file))
+
     cell_name = os.path.basename(fit_path).split("_", 2)[1]
     bias_eis = sorted(bias_eis, key=lambda x: int((x[x.find('550C_')+len('550C_'):x.rfind('bias')]))) #Sorts numerically by bias
 
@@ -712,13 +719,13 @@ def ec_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True,
         ax.legend()
         plt.show()
 
-        'Creating a dataframe and adding an excel data sheet (or creating the file if need be)'
+        'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'
         excel_name = '_' + cell_name + '_Data.xlsx'
         excel_file = os.path.join(folder_loc,excel_name)
         sheet_name = 'EC mode data'
         exists = False
 
-        if os.path.exists(excel_file)==True: # Looing for the data excel file in the button cell folder
+        if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
             writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
             wb = load_workbook(excel_file, read_only=True) # Looking for the po2
             if sheet_name in wb.sheetnames:
@@ -729,29 +736,38 @@ def ec_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True,
         if exists == False:
             df_ec_bias = pd.DataFrame(list(zip(bias_array,ohmic_asr,rp_asr)),
                 columns =['Applied Bias (V)','Ohmic ASR (ohm*cm^2)', 'Rp ASR (ohm*cm^2)'])
-            df_ec_bias.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this dataframe to a specific worksheet
+            df_ec_bias.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
             writer.save() # Close the Pandas Excel writer and output the Excel file.
 
 def steam_plots(folder_loc:str, fit_path:str, area:float, legend_loc:bool='best', O2:int=40,
                 which:str = 'core', init_from_ridge:bool=True, **peis_args:dict):
     '''
-    Searches through folder_loc for the steam plot EIS spectra (they will have certian names to aid this function),
+    Searches through folder_loc for the steam plot EIS spectra (they will have certain names to aid this function),
     and plots the EIS. Also the DRT is fit, saved, and plotted.
 
     The ohmic and Rp data at each condition is saved to the cell data excel file if the sheet 
     does not already exist
 
-    param folder_loc, str: The folder location of the EIS files (path to directory)
-    param fit_path, str: The folder location of the DRT fits (path to directory)
-    param area, float: The active cell area in cm^2
-    param legend_loc, str: The location of the legend (default = 'best'). The other option is to put 
+    Parameters:
+    -----------
+    folder_loc, str: 
+        The folder location of the EIS files (path to directory)
+    fit_path, str: 
+        The folder location of the DRT fits (path to directory)
+    area, float: 
+        The active cell area in cm^2
+    legend_loc, str: 
+        The location of the legend (default = 'best'). The other option is to put 
         the legend outside the figure and this is done by setting legend_loc = 'outside'
-    param O2, int: The O2 flow rate in SCCM used when taking the EIS spectra and in naming the files (default = 40)
-    param which, string: which data to store. 'core' or 'sample'. Core file sizes are smaller
-    param: init_from_ridge: bool, optional (default: False)
-        If True, use the hyperparametric ridge solution to initialize the Bayesian fit.
+    O2, int: 
+        The O2 flow rate in SCCM used when taking the EIS spectra and in naming the files (default = 40)
+    which, string: 
+        which data to store. 'core' or 'sample'. Core file sizes are smaller
+    init_from_ridge, bool: optional (default: False)
+        If True, use the hyper-parametric ridge solution to initialize the Bayesian fit.
         Only valid for single-distribution fits
-    param peis_args: dict, optional passed to the plot_peis function
+    peis_args, dict: (optional)
+        passes arguments to the plot_peis function
 
     Return --> None but one or more plots are generated
     '''
@@ -775,30 +791,30 @@ def steam_plots(folder_loc:str, fit_path:str, area:float, legend_loc:bool='best'
             steam_eis.append(steam_eis.pop(steam_eis.index(after)))
 
     '# --- Map fitting EIS if not already done so'
-    pickel_jar = os.listdir(fit_path)
-    pickel_name = 0
+    pickle_jar = os.listdir(fit_path)
+    pickle_name = 0
     map_fits =[] #stores the DRT map fits to save and call
     for eis in steam_eis:
         if eis.find('40O2')!=-1:
             steam_percent = eis[eis.find('Ar.')+len('Ar.'):eis.rfind('H2O')]
             fit_name = cell_name + '_map_fit_' + steam_percent + 'pH2O.pkl'
             map_fits.append(fit_name)
-            for pickel in pickel_jar: # checks to see if this has already been fit, if so name gets set to 1
-                if fit_name == pickel:
-                    pickel_name = pickel_name + 1
+            for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+                if fit_name == pickle:
+                    pickle_name = pickle_name + 1
                     break
-            if pickel_name == 0:
+            if pickle_name == 0:
                 map_drt_save(eis,fit_path,fit_name,which=which,init_from_ridge=init_from_ridge)
 
         if (eis.find('Steam')!=-1) or (eis.find('steam')!=-1):
             indicator = eis[eis.find('550C_')+len('550C_'):eis.rfind('.DTA')]
             fit_name = cell_name + '_map_fit_' + indicator + '.pkl'
             map_fits.append(fit_name)
-            for pickel in pickel_jar: # checks to see if this has already been fit, if so name gets set to 1
-                if fit_name == pickel:
-                    pickel_name = pickel_name + 1
+            for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+                if fit_name == pickle:
+                    pickle_name = pickle_name + 1
                     break
-            if pickel_name == 0: 
+            if pickle_name == 0: 
                 map_drt_save(eis,fit_path,fit_name,which=which,init_from_ridge=init_from_ridge)
 
     '# --- Plotting EIS'
@@ -831,13 +847,13 @@ def steam_plots(folder_loc:str, fit_path:str, area:float, legend_loc:bool='best'
     ax.legend()
     plt.show()
 
-    'Creating a dataframe and adding an excel data sheet (or creating the file if need be)'
+    'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'
     excel_name = '_' + cell_name + '_Data.xlsx'
     excel_file = os.path.join(folder_loc,excel_name)
     sheet_name = 'Steam data'
     exists = False
 
-    if os.path.exists(excel_file)==True: # Looing for the data excel file in the button cell folder
+    if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
         writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
         wb = load_workbook(excel_file, read_only=True) # Looking for the po2
         if sheet_name in wb.sheetnames:
@@ -848,12 +864,12 @@ def steam_plots(folder_loc:str, fit_path:str, area:float, legend_loc:bool='best'
     if exists == False:
         df_ec_bias = pd.DataFrame(list(zip(steam_array,ohmic_asr,rp_asr)),
             columns =['Steam Condition','Ohmic ASR (ohm*cm^2)', 'Rp ASR (ohm*cm^2)'])
-        df_ec_bias.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this dataframe to a specific worksheet
+        df_ec_bias.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
         writer.save() # Close the Pandas Excel writer and output the Excel file.
 
 def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 'default',
                         a10:bool=True, eis:bool=True, drt:bool=True, ncol:int=1,
-                        legend_loc:str='outside', cbar = True):
+                        legend_loc:str='outside', cbar = True, rev = True):
     '''
     Plots the EIS and the fit DRT of a cell taken at OCV during a long term stability test. This function
     complements a Gamry sequence that I use to test the cell stability over time in fuel cell mode. 
@@ -866,7 +882,7 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
     folder_loc, str: (path to a directory)
         The folder location of the EIS files 
     jar_loc, str: (path to a directory)
-        The folder location of the pickel jar where the DRT fits are 
+        The folder location of the pickle jar where the DRT fits are 
     area, float: 
         The active cell area in cm^2
     start_file, str: (default = 'default')
@@ -886,6 +902,9 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
     cbar, Bool: (default = True)
         If this is set to true then the legend will just be a colorbar
         If false, then the normal legend will exist
+    rev, Bol: (Default = True)
+        Reverses the order that the DRT is shown in. This needs to be a variable because
+        a10_ocv_fits and a10_ocv_deg_peis_time need to move in tandem or the legend will be off
 
     Return --> None but one or more plots are created and shown
     '''
@@ -906,7 +925,7 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
         ocv_deg_peis = [] #initializing bias files list
         
         if a10 == False: #Plot the EIS for the first 10 hours in 1 hr increments (the increment it is taken in)
-            for file in dta_files: #Finding all fuel celp bias EIS files
+            for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS')!=-1) and (file.find('_Deg')!=-1) and (file.find('Deg10')==-1) and (file.find('n3Bias')==-1):
                     ocv_deg_peis.append(os.path.join(folder_loc,file))
 
@@ -927,7 +946,7 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
 
         if a10 == True: # Plot the DRT after 10 hours in 10 hour increments (the increment it is taken in)
             'Finding and formatting'
-            for file in dta_files: #Finding all fuel celp bias EIS files
+            for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS')!=-1) and (file.find('_Deg10')!=-1) and (file.find('n3Bias')==-1):
                     loc = os.path.join(folder_loc,file)
                     ocv_deg_peis.append((loc,int(fl.get_timestamp(loc).strftime("%s"))))
@@ -942,7 +961,7 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
 
             'Setting up an array for the color map'
             # color = np.linspace(0,1,len(a10_ocv_deg_peis)) # array from 0-1 for the colormap for plotting
-            cmap = plt.cm.get_cmap('cividis', end_time)
+            cmap = plt.cm.get_cmap('viridis', end_time)
 
             'Plotting EIS'
             fig,ax = plt.subplots()
@@ -959,6 +978,7 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
                 df_useful = peis_data(area,loc)
                 if cbar == True:
                     ax.plot(df_useful['ohm'],df_useful['ohm.1'],'o',markersize=9,label = nyquist_name,color = cmap(time)) #plots data
+
                 if cbar == False:
                     plot_peiss(area,nyquist_name,loc,ncol=ncol,legend_loc=legend_loc,color = cmap(time))
 
@@ -978,7 +998,7 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.05)
                 cb = plt.colorbar(sm,ticks = [0,end_time],cax=cax)
-                cb.set_label(label='Time (hrs)',fontsize = 'xx-large',labelpad = -20)
+                cb.set_label(label='Time (hrs)',fontsize = 'xx-large',labelpad = -10)
                 cb.set_ticks(ticks = [0,end_time],fontsize='xx-large')
                 cb.ax.tick_params(labelsize='x-large')
 
@@ -1009,9 +1029,9 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
             plt.show()
         
         if a10 == True:  
-            'Sorting out relavent DRT files'         
+            'Sorting out relevant DRT files'         
             a10_ocv_fits = [file for file in os.listdir(jar_loc) if file.find('OCV10')!=-1] #Makes a list of all OCV files 
-            a10_ocv_fits = natsort.humansorted(a10_ocv_fits)
+            a10_ocv_fits = natsort.humansorted(a10_ocv_fits,reverse= rev)
 
             "Finding the time from the correct EIS file"
             dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
@@ -1024,90 +1044,31 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
             'Sorting values by time'
             # The order of the list is reversed to ensure that if there is degradation, the DRT plot can fit the larger spectra
             a10_ocv_deg_peis_time = natsort.humansorted(ocv_deg_peis_time)
-            a10_ocv_deg_peis_time.sort(reverse=True)
+            a10_ocv_deg_peis_time.sort(reverse=rev)
 
             'Setting up an array for the color map'
-            cmap = plt.cm.get_cmap('cividis')
+            if rev == True:
+                cmap = plt.cm.get_cmap('viridis')
+            if rev == False:
+                cmap = plt.cm.get_cmap('viridis_r')
+                
             color_space = np.linspace(0,1,len(a10_ocv_fits)) # array from 0-1 for the colormap for plotting
-            c = 0 # indicie of the color array
+            c = 0 # index of the color array
 
             i = 0 # Setting the initial index
-            for fit in reversed(a10_ocv_fits): #For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
+            for fit in a10_ocv_fits: #For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
                 # --- Finding the right mapfit file and matching it to the right time
                 number = fit[fit.find('OCV10')+len('OCV10'):fit.rfind('.pkl')] #gets the OCV (which is actually a string)
                 map_fit_name = cell_name + '_OCV10' + number + '.pkl'
                 time = round((int(a10_ocv_deg_peis_time[i])-t0)/3600) # to convert to hours and round to the nearest hour from the test start
                 label = str(time) + ' Hours'
+
                 i = i+1
 
                 # --- Plotting
                 inv = Inverter()
                 inv.load_fit_data(os.path.join(jar_loc,map_fit_name))
                 color = cmap(color_space[len(color_space)-c-1])
-                bp.plot_distribution(None,inv,ax,unit_scale='',label = label,color=color)
-                c = c + 1
-
-            ax.legend()
-            plt.show()
-
-
-
-    if drt == True:
-        'Finding and Formatting'
-        fig, ax = plt.subplots() #initializing plots for DRT
-        
-        if a10 == False: #Plot the DRT for the first 10 hours in 1 hr increments (the increment it is taken in)
-            f10_bias_deg_fits = [file for file in os.listdir(jar_loc) if (file.find('n3_Bias')!=-1 and file.find('n3_Bias10')==-1)] #Makes a list of all Bias files 
-            f10_bias_deg_fits = sorted(f10_bias_deg_fits, key=lambda x: int((x[x.find('__#')+len('__#'):x.rfind('.pkl')]))) #Sorts numerically by time
-            
-            for fit in f10_bias_deg_fits: # Calling fits and plotting
-                # --- Finding and formatting
-                loc = os.path.join(folder_loc, fit) # creates the full path to the file
-                time = fit[fit.find('__#')+len('__#'):fit.rfind('.pkl')] #gets the bias from the file name
-                map_fit_name = cell_name+'_n3_Bias__#' + time + '.pkl'
-                label = str(time) + ' Hours'
-
-                # --- Plotting
-                inv = Inverter()
-                inv.load_fit_data(os.path.join(jar_loc,map_fit_name))
-                bp.plot_distribution(None,inv,ax,unit_scale='',label = label)
-            ax.legend()
-            plt.show()
-        
-        if a10 == True:  
-            'Sorting out relavent DRT files'         
-            a10_bias_fits = [file for file in os.listdir(jar_loc) if file.find('n3_Bias10')!=-1] #Makes a list of all OCV files 
-            a10_bias_fits = natsort.humansorted(a10_bias_fits)
-
-            "Finding the time from the correct EIS file"
-            dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
-            bias_deg_peis_time = [] #initializing bias files list
-            for file in dta_files: #Finding all fuel celp bias EIS files
-                if (file.find('PEIS')!=-1) and (file.find('_Deg10')!=-1) and (file.find('n3Bias')!=-1):
-                    loc = os.path.join(folder_loc,file)
-                    bias_deg_peis_time.append(int(fl.get_timestamp(loc).strftime("%s")))
-            
-            'Sorting values by time'
-            a10_bias_deg_peis_time = natsort.humansorted(bias_deg_peis_time)
-
-            'Setting up an array for the color map'
-            cmap = plt.cm.get_cmap('cividis')
-            color_space = np.linspace(0,1,len(a10_bias_fits)) # array from 0-1 for the colormap for plotting
-            c = 0 # indicie of the color array
-
-            i = 0 # Setting the initial index
-            for fit in a10_bias_fits: #For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
-                # --- Finding the right mapfit file and matching it to the right time
-                number = fit[fit.find('_Bias10')+len('_Bias10'):fit.rfind('.pkl')] #gets the bias from the file name
-                map_fit_name = cell_name + '_n3_Bias10' + number + '.pkl'
-                time = round((a10_bias_deg_peis_time[i]-t0)/3600) # to convert to hours and round to the nearest hour from the test start
-                label = str(time) + ' Hours'
-                i = i+1
-
-                # --- Plotting
-                inv = Inverter()
-                inv.load_fit_data(os.path.join(jar_loc,map_fit_name))
-                color = cmap(color_space[c])
                 bp.plot_distribution(None,inv,ax,unit_scale='',label = label,color=color)
                 c = c + 1
 
@@ -1129,7 +1090,7 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
     folder_loc, str: (path to a directory)
         The folder location of the EIS files
     jar_loc, str:  (path to a directory)
-        The folder location of the pickel jar where the DRT fits are stored
+        The folder location of the pickle jar where the DRT fits are stored
     area, float: 
         The active cell area in cm^2
     start_file, str: (default = 'default')
@@ -1144,7 +1105,7 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
         Whether or not to plot the DRT fits
     ncol, int: (default` = 1)
         The number of columns to use in the legend of the plot
-    legend_loc, str: (defult = 'outside')
+    legend_loc, str: (default = 'outside')
         The location of the legend (default = 'best'). The other option is to put 
         the legend outside the figure and this is done by setting legend_loc = 'outside'
     cbar, Bool: (default = True)
@@ -1170,7 +1131,7 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
         bias_deg_peis = [] #initializing bias files list
         
         if a10 == False: #Plot the EIS for the first 10 hours in 1 hr increments (the increment it is taken in)
-            for file in dta_files: #Finding all fuel celp bias EIS files
+            for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS')!=-1) and (file.find('_Deg')!=-1) and (file.find('Deg10')==-1) and (file.find('n3Bias')!=-1):
                     bias_deg_peis.append(os.path.join(folder_loc,file))
 
@@ -1206,9 +1167,7 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
             end_time = int((last-t0)/3600) #hrs
 
             'Setting up an array for the color map'
-            # color = np.linspace(0,1,len(a10_bias_deg_peis)) # array from 0-1 for the colormap for plotting
-            # c = 0 # indicie of the color array
-            cmap = plt.cm.get_cmap('cividis',end_time)
+            cmap = plt.cm.get_cmap('plasma',end_time)
 
             'Plotting EIS'
             fig,ax = plt.subplots()
@@ -1221,8 +1180,6 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
                 nyquist_name =  str(round(time)) + ' Hours'
 
                 # --- Plotting
-                # plot_peiss(area,nyquist_name,loc,ncol=ncol,legend_loc=legend_loc,color = cmap(color[c]))
-                # c = c + 1
                 df_useful = peis_data(area,loc)
                 if cbar == True:
                     ax.plot(df_useful['ohm'],df_useful['ohm.1'],'o',markersize=9,label = nyquist_name,color = cmap(time)) #plots data
@@ -1238,14 +1195,13 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
                 ax.spines['top'].set_visible(False)
                 ax.spines['right'].set_visible(False)
 
-
             if cbar == True:
                 sm = plt.cm.ScalarMappable(cmap=cmap)
                 sm.set_array([0,end_time])
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.05)
                 cb = plt.colorbar(sm,ticks = [0,end_time],cax=cax)
-                cb.set_label(label='Time (hrs)',fontsize = 'xx-large',labelpad = -20)
+                cb.set_label(label='Time (hrs)',fontsize = 'xx-large',labelpad = -10)
                 cb.set_ticks(ticks = [0,end_time],fontsize='xx-large')
                 cb.ax.tick_params(labelsize='x-large')
 
@@ -1276,14 +1232,14 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
             plt.show()
         
         if a10 == True:  
-            'Sorting out relavent DRT files'         
+            'Sorting out relevant DRT files'         
             a10_bias_fits = [file for file in os.listdir(jar_loc) if file.find('n3_Bias10')!=-1] #Makes a list of all OCV files 
             a10_bias_fits = natsort.humansorted(a10_bias_fits)
 
             "Finding the time from the correct EIS file"
             dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
             bias_deg_peis_time = [] #initializing bias files list
-            for file in dta_files: #Finding all fuel celp bias EIS files
+            for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS')!=-1) and (file.find('_Deg10')!=-1) and (file.find('n3Bias')!=-1):
                     loc = os.path.join(folder_loc,file)
                     bias_deg_peis_time.append(int(fl.get_timestamp(loc).strftime("%s")))
@@ -1292,9 +1248,9 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
             a10_bias_deg_peis_time = natsort.humansorted(bias_deg_peis_time)
 
             'Setting up an array for the color map'
-            cmap = plt.cm.get_cmap('cividis')
+            cmap = plt.cm.get_cmap('plasma')
             color_space = np.linspace(0,1,len(a10_bias_fits)) # array from 0-1 for the colormap for plotting
-            c = 0 # indicie of the color array
+            c = 0 # index of the color array
 
             i = 0 # Setting the initial index
             for fit in a10_bias_fits: #For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
@@ -1303,6 +1259,7 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
                 map_fit_name = cell_name + '_n3_Bias10' + number + '.pkl'
                 time = round((a10_bias_deg_peis_time[i]-t0)/3600) # to convert to hours and round to the nearest hour from the test start
                 label = str(time) + ' Hours'
+
                 i = i+1
 
                 # --- Plotting
@@ -1325,12 +1282,12 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
 
     OCV eis spectra are taken one an hour for the first 10 hours then 1 every 10 hours for the rest of the test
 
-    Paremeters
+    Parameters
     ----------
     folder_loc, str: (path to a directory)
         The folder location of the EIS files 
     jar_loc, str: (path to a directory)
-        The folder location of the pickel jar where the DRT fits are 
+        The folder location of the pickle jar where the DRT fits are 
     area, float: 
         The active cell area in cm^2
     start_file, str: (default = 'default')
@@ -1370,7 +1327,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
         ocv_deg_peis = [] #initializing bias files list
         
         if a10 == False: #Plot the EIS for the first 10 hours in 1 hr increments (the increment it is taken in)
-            for file in dta_files: #Finding all fuel celp bias EIS files
+            for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS')!=-1) and (file.find('_ECstability')!=-1) and (file.find('ECstability10')==-1) and (file.find('TNV')==-1):
                     ocv_deg_peis.append(os.path.join(folder_loc,file))
 
@@ -1390,7 +1347,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
 
         if a10 == True: # Plot the DRT after 10 hours in 10 hour increments (the increment it is taken in)
             'Finding and formatting'
-            for file in dta_files: #Finding all fuel celp bias EIS files
+            for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS')!=-1) and (file.find('_ECstability10')!=-1) and (file.find('TNV')==-1):
                     loc = os.path.join(folder_loc,file)
                     ocv_deg_peis.append((loc,int(fl.get_timestamp(loc).strftime("%s"))))
@@ -1470,7 +1427,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
             plt.show()
         
         if a10 == True:  
-            'Sorting out relavent DRT files'         
+            'Sorting out relevant DRT files'         
             a10_ocv_fits = [file for file in os.listdir(jar_loc) if file.find('OCV10')!=-1] #Makes a list of all OCV files 
             a10_ocv_fits = natsort.humansorted(a10_ocv_fits)
 
@@ -1491,7 +1448,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
             'Setting up an array for the color map'
             cmap = plt.cm.get_cmap('cividis')
             color_space = np.linspace(0,1,len(a10_ocv_fits)) # array from 0-1 for the colormap for plotting
-            c = 0 # indicie of the color array
+            c = 0 # index of the color array
 
             i = 0 # Setting the initial index
             for fit in reversed(a10_ocv_fits): #For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
@@ -1521,14 +1478,14 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
     DRT must already be fit before using this function.
 
     Bias eis spectra are taken one an hour for the first 10 hours then 1 every 10 hours for the rest of the test.
-    The tests are done at around the thermoneutral voltage of the cell.
+    The tests are done at around the thermo-neutral voltage of the cell.
     
     Parameters
     ----------
     folder_loc, str: (path to a directory)
         The folder location of the EIS files
     jar_loc, str:  (path to a directory)
-        The folder location of the pickel jar where the DRT fits are stored
+        The folder location of the pickle jar where the DRT fits are stored
     area, float: 
         The active cell area in cm^2
     start_file, str: (default = 'default')
@@ -1546,7 +1503,7 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
         the inductance takes up a huge area on the graph and the EIS spectra is hard to see.
     ncol, int: (default` = 1)
         The number of columns to use in the legend of the plot
-    legend_loc, str: (defult = 'outside')
+    legend_loc, str: (default = 'outside')
         The location of the legend (default = 'best'). The other option is to put 
         the legend outside the figure and this is done by setting legend_loc = 'outside'
     cbar, Bool: (default = True)
@@ -1572,7 +1529,7 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
         bias_deg_peis = [] #initializing bias files list
         
         if a10 == False: #Plot the EIS for the first 10 hours in 1 hr increments (the increment it is taken in)
-            for file in dta_files: #Finding all fuel celp bias EIS files
+            for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS_TNV')!=-1) and (file.find('_ECstability')!=-1) and (file.find('ECstability10')==-1):
                     bias_deg_peis.append(os.path.join(folder_loc,file))
 
@@ -1611,7 +1568,7 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
 
             'Setting up an array for the color map'
             color = np.linspace(0,1,len(a10_bias_deg_peis)) # array from 0-1 for the colormap for plotting
-            # c = 0 # indicie of the color array
+            # c = 0 # index of the color array
             cmap = plt.cm.get_cmap('cividis',end_time)
 
             'Plotting EIS'
@@ -1683,7 +1640,7 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
             plt.show()
         
         if a10 == True:  
-            'Sorting out relavent DRT files'         
+            'Sorting out relevant DRT files'         
             a10_bias_fits = [file for file in os.listdir(jar_loc) if file.find('TNV10')!=-1] #Makes a list of all OCV files 
             a10_bias_fits = natsort.humansorted(a10_bias_fits)
 
@@ -1691,7 +1648,7 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
             dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
             bias_deg_peis_time = [] #initializing bias files list
             
-            for file in dta_files: #Finding all fuel celp bias EIS files
+            for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS')!=-1) and (file.find('_ECstability10')!=-1) and (file.find('TNV')!=-1):
                     loc = os.path.join(folder_loc,file)
                     bias_deg_peis_time.append(int(fl.get_timestamp(loc).strftime("%s")))
@@ -1702,7 +1659,7 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
             'Setting up an array for the color map'
             cmap = plt.cm.get_cmap('cividis')
             color_space = np.linspace(0,1,len(a10_bias_fits)) # array from 0-1 for the colormap for plotting
-            c = 0 # indicie of the color array
+            c = 0 # index of the color array
 
             i = 0 # Setting the initial index
             for fit in a10_bias_fits: #For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
@@ -1737,7 +1694,7 @@ def excel_datasheet_exists(excel_file:str,sheet_name:str):
     '''
     
     exists = False
-    if os.path.exists(excel_file)==True: # Looing for the data excel file in the button cell folder
+    if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
         writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
         wb = load_workbook(excel_file, read_only=True) # Looking for the bias Deg eis
         if sheet_name in wb.sheetnames:
@@ -1802,7 +1759,7 @@ def o2_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array =
                 traceback.print_exc()
                 print('The removed concentration must be in concs array (aka concentrations plotted)')
                 print('Check the concs array and the rmv_concs array')
-                print('If that doesnt work, make sure that there are data points in the specified tau range (it is easy to confuse the log scale)')
+                print('If that does not work, make sure that there are data points in the specified tau range (it is easy to confuse the log scale)')
                 sys.exit(1)
 
             # - remove all higher tau values
@@ -1822,7 +1779,7 @@ def o2_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array =
                 traceback.print_exc()
                 print('The removed concentration must be in concs array (aka concentrations plotted)')
                 print('Check the concs array and the rmv_concs array')
-                print('If that doesnt work, make sure that there are data points in the specified tau range (it is easy to confuse the log scale)')
+                print('If that does not work, make sure that there are data points in the specified tau range (it is easy to confuse the log scale)')
                 sys.exit(1)
 
             # - remove all higher tau values
@@ -1848,7 +1805,7 @@ def o2_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array =
     ax2 = ax1.twiny()
     ax1.plot(x,y,'ko')
 
-    # - Setting fontsizes
+    # - Setting font sizes
     label_fontsize = 'x-large'
     tick_fontsize = 'large'
     text_fontsize = 'x-large'

@@ -1,4 +1,4 @@
-''' This module contains functions to help format and plot Electrohchemical Impedance Spectroscopy (EIS)
+''' This module contains functions to help format and plot Electrochemical Impedance Spectroscopy (EIS)
 data. The data files are obtained by a Gamry potentiostat. The files are .DTA files
 # C-Meisel
 '''
@@ -46,7 +46,7 @@ def plot_ocv(loc : str):
 
 def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False, cut_inductance:bool = False,**plot_args):
     '''
-    Plots Zreal and Zimag from a DTA file of Potentiostatic Eis
+    Plots Zreal and Zimag from a DTA file of potentiostatic EIS data taken from a Gamry potentiostat
 
     Parameters
     ----------
@@ -60,7 +60,7 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
         If true, plots a dark mode EIS data.  If false, plots a light mode EIS data. The pro version
         has more experimental features.
     cut_inductance, bool: (default = False)
-        If this is set to true, the negative inductance values at the beginning of the dataframe
+        If this is set to true, the negative inductance values at the beginning of the DataFrame
     plot_args, dict:
         Any arguments that are passed to the plot function.
 
@@ -95,7 +95,7 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
         plt.axis('scaled')
         return plot
 
-    elif pro == True: # Plot like a Pro breh. Just messing around at this point
+    elif pro == True: # Plot like a Pro, breh. Just messing around at this point
         fig,ax = plt.subplots()
         ax.plot(df_useful['ohm'],df_useful['ohm.1'],'D',**plot_args,color = '#336699',alpha=0.69,markeredgewidth=0.2,
             markeredgecolor='#cfcfcf',ms=8,antialiased=True) # #21314D is the color of Mines Navy blue ##09213c #0c2d52
@@ -111,7 +111,7 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
         ax.spines['right'].set_visible(False)
         ax.tick_params(colors=frame_color, which='both')
 
-        # --- Horozontal dashed line
+        # --- Horizontal dashed line
         dashes = [6,2,2,2,6,2,2,4,6,2,6,4]
         ax.axhline(y=0, color='#c1741d',dashes=dashes) # #D2492A is the color of Mines orange #7f4c13 #c1741d #D98B21
 
@@ -157,21 +157,23 @@ def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
         The location of the legend. Best is the best spot, Outside places the legend
         outside the plot.
     cut_inductance, bool: (default = False)
-        If this is set to true, the negative inductance values at the beginning of the dataframe
-    lot_args,dict: 
+        If this is set to true, the negative inductance values at the beginning of the DataFrame
+    plot_args, dict: 
         Any arguments that are passed to the plot function.
 
     Return --> none but it plots the figure
     '''
     
-    dta2csv(loc) #convert DTA to a CSV
+    dta2csv(loc) # convert DTA to a CSV
     loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
-    #find right amount of rows to skip
+    
+    # - find right amount of rows to skip
     file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
     for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
         if row[0] == 'ZCURVE':
             skip = file.line_num+1
             break
+    
     df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1')
     df['ohm.1'] = df['ohm.1'].mul(-1*area)
     df['ohm'] = df['ohm'].mul(area)
@@ -196,7 +198,7 @@ def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
         plt.legend(loc='best',fontsize='x-large')
     elif legend_loc == 'outside':
         plt.legend(loc='upper left',bbox_to_anchor=(1,1),ncol=ncol)
-    else: #this else statemnent is a default if one of the earlier statments causes an error
+    else: #this else statement is a default if one of the earlier statements causes an error
         plt.legend(loc='upper left',bbox_to_anchor=(1,1),ncol=ncol)
 
     plt.tight_layout()
@@ -206,11 +208,18 @@ def plot_eis_ocvs(loc:str, label:str, ymin:float=1.00, ymax:float=1.10, ncol:int
     Plots the ocv that is taken right before the EIS data. This function can stack to plot
     multiple ocv files on the same plot. Same as peiss.
 
-    param loc,str: Location of the .DTA file that contains the EIS data.
-    param label,str: The label of the ocv data. this will be in the plot legend
-    param ymin,float: The minimum y value of the plot. Defaults to 1.00.
-    param ymax,float: The maximum y value of the plot. Defaults to 1.10.
-    param ncol,int: The number of columns in the legend of the plot.
+    Parameters:
+    -----------
+    loc, str:
+        Location of the .DTA file that contains the EIS data.
+    label, str:
+        The label of the ocv data. this will be in the plot legend
+    ymin,float:
+        The minimum y value of the plot. Defaults to 1.00.
+    ymax, float: 
+        The maximum y value of the plot. Defaults to 1.10.
+    ncol, int:
+        The number of columns in the legend of the plot.
 
     Return --> none but it plots the figure
     '''
@@ -237,43 +246,55 @@ def plot_eis_ocvs(loc:str, label:str, ymin:float=1.00, ymax:float=1.10, ncol:int
 
 def plot_ivfc(area:float, loc:str):
     '''
-    Plots an IV curve and power density curve with the Pmax listed on the plot for fuel cell mode operation.
+    Extracts the polarization data from a fuel cell mode polarization curve taken with a Gamry potentiostat.
+    Plots the IV curve and calculates and plots the corresponding power density curve
+    Calculates the max power density and prints it on the plot
 
-    param area,float: The active cell area in cm^2
-    param loc,str: Location of the .DTA file that contains the IV data.
+    Parameters:
+    -----------
+    area, float:
+        The active cell area in cm^2
+    loc, str:
+        Location of the .DTA file that contains the IV data.
 
     Return --> none but it plots the figure and shows it    
     '''
     
-    dta2csv(loc) #Converts and finds CSV then turns it into a dataframe
+    dta2csv(loc) #Converts and finds CSV then turns it into a DataFrame
     loc_csv = loc.replace('.DTA','')+'.csv'
     file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here, but it works
+    
     for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
         if row[0] == 'CURVE':
             skip = file.line_num+1
             break
     df = pd.read_csv(loc_csv,sep='\t',skiprows=skip,encoding='latin1')
-    #calculations and only keeping the useful data
+    
+    # -calculations and only keeping the useful data
     df['A'] = df['A'].div(-area)
     df['W'] = df['W'].div(-area)
     df_useful = df[['V','A','W']]
-    #Plotting
+    
+    # --- Plotting
     fig, ax1 = plt.subplots()
-    #IV plotting
+   
+    # - IV plotting
     color = '#21314D' #Navy color
     ax1.set_xlabel('Current Density ($A/cm^2$)',fontsize = 'xx-large')
     ax1.set_ylabel('Voltage (V)', color=color, fontsize = 'xx-large')
     ax1.plot(df_useful['A'], df_useful['V'],'o', color=color)
     ax1.tick_params(axis='y', labelcolor=color,labelsize = 'x-large')
     ax1.tick_params(axis='x',labelsize = 'x-large')
-    #Power density plotting
+    
+    # - Power density plotting
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
     color2 = '#D2492A' #orange color
     ax2.set_ylabel('Power Density ($W/cm^2$)', color=color2, fontsize = 'xx-large')  # we already handled the x-label with ax1
     ax2.plot(df_useful['A'], df_useful['W'], 'o',color=color2) 
     ax2.tick_params(axis='y', labelcolor=color2, labelsize = 'x-large')
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    #Calculating and printing max values onto the graph
+    
+    # - Calculating and printing max values onto the graph
     max_w = df_useful['W'].max() #finds maximum power density
     max_v = df.loc[df.index[df['W'] == max_w],'V'].item() #finds voltage of max power density
     max_ws = f'{round(max_w,3)}' #setts float to a string
@@ -309,15 +330,15 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
     if cmap is not None:
         # --- Setting up an array for the color map
         color_space = np.linspace(0,1,len(curves_conditions)) # array from 0-1 for the colormap for plotting
-        c = 0 # indicie of the color array
+        c = 0 # index of the color array
         cmap = cmap
         print(color_space)
 
     for iv in curves_conditions:
-        ' Extracting data from DTA file to a dataframe'
+        ' Extracting data from DTA file to a DataFrame'
         loc = iv[2]
         print(loc)
-        dta2csv(loc) #Converts and finds CSV then turns it into a dataframe
+        dta2csv(loc) #Converts and finds CSV then turns it into a DataFrame
         loc_csv = loc.replace('.DTA','')+'.csv'
         file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here, but it works
         
@@ -397,7 +418,7 @@ def plot_ivec(area:float, loc:str, CD_at_V:float = 1.5):
     Return --> none but it plots the figure and shows it
     '''
     
-    dta2csv(loc) #Converts and finds CSV then turns it into a dataframe
+    dta2csv(loc) #Converts and finds CSV then turns it into a DataFrame
     loc_csv = loc.replace('.DTA','')+'.csv'
     file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here, but it works
     for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
@@ -447,7 +468,7 @@ def plot_ivecs(area:float,condition:str,loc:str):
     Return --> none but it plots the figure
     '''
     
-    dta2csv(loc) #Converts and finds CSV then turns it into a dataframe
+    dta2csv(loc) #Converts and finds CSV then turns it into a DataFrame
     loc_csv = loc.replace('.DTA','')+'.csv'
     file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here, but it works
     for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
@@ -478,7 +499,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
                      first_file:str = 'default', clean_axis=True, quant_stb = 'mv'):
     '''
     Looks through the specified folder and plots all the galvanostatic stability testing data in one plot, 
-    and fits it. This function compliments the gamry sequence I use for stability testing
+    and fits it. This function compliments the gamry sequence I use for fuel cell mode stability testing
 
     Parameters
     ----------
@@ -495,7 +516,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         If 'default' then the first file taken is used
         If you want to change the first file, put the loc in place of 'default'
     clean_axis, string: (default = True)
-        When true, plotts the Voltage axis with less points
+        When true, plots the Voltage axis with less points
         This is a much cleaner way to plot and looks better when presenting
         however it clears out the Y axis so if you want to zoom in on an image, set this to False
     quant_stb, str: (default = 'mv')
@@ -505,6 +526,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         (% of the starting potential lost during testing)
         if = overpotential, then the slope is multiplied by 1,000,000 then divided by the starting potential-OCV to get %/khrs
         (% of the overpotential lost during testing)
+        if = all, then all three of the above options are printed at on the figure
 
     Return --> none but it plots the figure and shows it
     '''
@@ -523,8 +545,8 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
             useful_files.append(useful_file)
     
     # ------- Sorting the files
-    useful_files.sort(key=lambda x:x[1]) #Sorts by the second number in the tupple
-    sorted_useful_files, numbers = zip(*useful_files) #splits the tupple
+    useful_files.sort(key=lambda x:x[1]) #Sorts by the second number in the tuple
+    sorted_useful_files, numbers = zip(*useful_files) #splits the tuple
     sorted_useful_files = [folder_loc + '/' + f for f in sorted_useful_files] #Turning all files from their relative paths to the absolute path
 
     # ------- Getting the first time
@@ -532,20 +554,20 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1:
             file1 = os.path.join(folder_loc,file)
 
-    if first_file == 'default': #if another file is specified as the first file, this file will be used to find T0
-        T0_stamp = fl.get_timestamp(file1) #gets time stamp from first file
-        t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+    if first_file == 'default': # if another file is specified as the first file, this file will be used to find T0
+        T0_stamp = fl.get_timestamp(file1) # gets time stamp from first file
+        t0 = T0_stamp.strftime("%s") # Converting Datetime to seconds from Epoch
     else:
         T0_stamp = fl.get_timestamp(first_file) #gets time stamp from first file
-        t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
 
     
-    # ------- Combining all dataframes
+    # ------- Combining all DataFrames
     dfs = [] #Initializing list of dfs
     length = len(sorted_useful_files) #gets length of sorted useful files
     
     for i in range(0,length,1):
-        loc = os.path.join(folder_loc,sorted_useful_files[i]) #Creats a file path to the file of choice
+        loc = os.path.join(folder_loc,sorted_useful_files[i]) # Creates a file path to the file of choice
         dta2csv(loc) #convert DTA to a CSV
         loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
         data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
@@ -555,17 +577,17 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
                 skip = data.line_num+1
                 break
 
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #creat data frame for a file
+        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #create data frame for a file
         start_time = fl.get_timestamp(sorted_useful_files[i]).strftime("%s") #Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
         dfs.append(df_useful)
 
-    cat_dfs = pd.concat(dfs,ignore_index=True)# (s) Combine all the dataframes in the file folder
+    cat_dfs = pd.concat(dfs,ignore_index=True)# (s) Combine all the DataFrames in the file folder
     cat_dfs.sort_values(by=['s'])
     cat_dfs['s'] = (cat_dfs['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
     end_time = int(cat_dfs['s'].max())
-    start_time = int(cat_dfs['s'].min()) #isnt necessearily 0. Maybe you are only looking at a small portion of the data
+    start_time = int(cat_dfs['s'].min()) #is nt necessarily 0. Maybe you are only looking at a small portion of the data
 
     # ------- plotting:
     fig, ax = plt.subplots()
@@ -598,28 +620,43 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
     ax.spines['right'].set_visible(False)
     ax.set_ylim(0,ocv)
 
-    # ------- fitting and writting slope on graph:
+    # ------- fitting and writing slope on graph:
     if fit == True:
         m,b = np.polyfit(cat_dfs['s'],cat_dfs['V vs. Ref.'],1)
         fit = m*cat_dfs['s']+b
         ax.plot(cat_dfs['s'],fit,'--r')
         
         if quant_stb == 'mv':
-            mp = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degredation)
+            mp = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' mV/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'potential':
-            init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and mult by 100 to get %/khrs)
+            init_v = get_init_v(folder_loc,fc=True)
+            mp = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
             ms = f'{round(mp,2)}'
             plt.figtext(0.40,0.17, ms+' %/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'overpotential':
-            init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and mult by 100 to get %η/khrs))
+            init_v = get_init_v(folder_loc,fc=True)
+            mp = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
+        
+        if quant_stb == 'all':
+            init_v = get_init_v(folder_loc,fc=True)
+
+            m_mv = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
+            m_mvs = f'{round(m_mv,2)}'
+            plt.figtext(0.43,0.13, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
+
+            m_volt = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
+            m_volts = f'{round(m_volt,2)}'
+            plt.figtext(0.43,0.20, m_volts + ' %/khrs',weight='bold',size='xx-large')
+
+            m_over = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            m_overs= f'{round(m_over,2)}'
+            plt.figtext(0.44,0.27, m_overs + ' %η/khrs',weight='bold',size='xx-large')
 
     plt.tight_layout()
 
@@ -650,6 +687,7 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
         (% of the starting potential lost during testing)
         if = overpotential, then the slope is multiplied by 1,000,000 then divided by the starting potential-OCV to get %/khrs
         (% of the overpotential lost during testing)
+        if = all, then all three of the above options are printed at on the figure
 
     Return --> none, but it plots the data, fits it, and shows it
     '''
@@ -668,12 +706,12 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
             file1 = os.path.join(folder_loc,file)
     if first_file == 'default': #if another file is specified as the first file, this file will be used to find T0
         T0_stamp = fl.get_timestamp(file1) #gets time stamp from first file
-        t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
     else:
         T0_stamp = fl.get_timestamp(first_file) #gets time stamp from first file
-        t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
 
-    # ======= Concatinating all of the data frames
+    # ======= Concatenating all of the data frames
     dfs = [] #Initializing list of dfs
     length = len(useful_files) #gets length of sorted useful files
     
@@ -687,23 +725,21 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
                 skip = data.line_num+1
                 break
         
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #creat data frame for a file
-        start_time = fl.get_timestamp(useful_files[i]).strftime("%s") #Find the start time of the file in s from epoch
+        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
+        start_time = fl.get_timestamp(useful_files[i]).strftime("%s") # Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
         dfs.append(df_useful)
 
-    # - Combining all of the dataframes
-    cat_dfs = pd.concat(dfs,ignore_index=True) # (s) Combine all the dataframes in the file folder
+    # - Combining all of the DataFrames
+    cat_dfs = pd.concat(dfs,ignore_index=True) # (s) Combine all the DataFrames in the file folder
     cat_dfs['s'] = (cat_dfs['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
 
     # - Finding the start and end time
     end_time = int(cat_dfs['s'].max())
-    start_time = int(cat_dfs['s'].min()) #isnt necessearily 0. Maybe you are only looking at a small portion of the data
-    # print(start_time)
-    # print(end_time)
+    start_time = int(cat_dfs['s'].min()) #is not necessarily 0. Maybe you are only looking at a small portion of the data
 
-    # ======= Ploting
+    # ======= Plotting
     fig, ax = plt.subplots()
     ax.plot(cat_dfs['s'],cat_dfs['V vs. Ref.'], '.k', markersize=20)
 
@@ -726,7 +762,7 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
     ax.spines['right'].set_visible(False)
     ax.set_ylim(0,1.2)
 
-    # ======= fitting and writting slope on graph: 
+    # ======= fitting and writing slope on graph: 
     if fit == True:
         # === Converting cat_dfs to floats so polyfit can work (sometimes the df columns are object types)
         cat_dfs['s'] = cat_dfs['s'].astype(float, errors = 'raise')
@@ -738,28 +774,44 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
         ax.plot(cat_dfs['s'],fit,'--r')
         
         if quant_stb == 'mv':
-            mp = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degredation)
+            mp = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' mV/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'potential':
             init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and mult by 100 to get %/khrs)
+            mp = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
             ms = f'{round(mp,2)}'
             plt.figtext(0.40,0.17, ms+' %/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'overpotential':
             init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and mult by 100 to get %η/khrs))
+            mp = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
-    
+        
+        if quant_stb == 'all':
+            init_v = get_init_v(folder_loc,fc=True)
+
+            m_mv = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
+            m_mvs = f'{round(m_mv,2)}'
+            plt.figtext(0.39,0.13, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
+
+            m_volt = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
+            m_volts = f'{round(m_volt,2)}'
+            plt.figtext(0.39,0.20, m_volts + ' %/khrs',weight='bold',size='xx-large')
+
+            m_over = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            m_overs= f'{round(m_over,2)}'
+            plt.figtext(0.40,0.27, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+
+
     plt.show()
 
 def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize = 20,
                     clean_axis=True, quant_stb = 'mv'):
     '''
-    Looks through the specified folder and plots all the Electrolysis cell modeocv stability test data 
+    Looks through the specified folder and plots all the Electrolysis cell mode ocv stability test data 
     in one plot and fits it. This function compliments the gamry sequence I use for EC stability testing.
     
     Parameters
@@ -775,7 +827,7 @@ def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsi
     fontsize, int:
         The font size of the words on the plot
     clean_axis, string: (default = True)
-        When true, plotts the Voltage axis with less points
+        When true, plots the Voltage axis with less points
         This is a much cleaner way to plot and looks better when presenting
         however it clears out the Y axis so if you want to zoom in on an image, set this to False
     quant_stb, str: (default = 'mv')
@@ -803,12 +855,12 @@ def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsi
             file1 = os.path.join(folder_loc,file)
     if first_file == 'default': #if another file is specified as the first file, this file will be used to find T0
         T0_stamp = fl.get_timestamp(file1) #gets time stamp from first file
-        t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
     else:
         T0_stamp = fl.get_timestamp(first_file) #gets time stamp from first file
-        t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
     
-    # ======= Concatinating the EC mode OCV stability data
+    # ======= Concatenating the EC mode OCV stability data
     dfs = [] #Initializing list of dfs
     length = len(useful_files) #gets length of sorted useful files
     for i in range(0,length,1):
@@ -819,22 +871,22 @@ def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsi
             if row[0] == 'CURVE':
                 skip = data.line_num+1
                 break
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #creat data frame for a file
+        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #create data frame for a file
         start_time = fl.get_timestamp(useful_files[i]).strftime("%s") #Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
         dfs.append(df_useful)
     
-    cat_dfs = pd.concat(dfs)# (s) Combine all the dataframes in the file folder
+    cat_dfs = pd.concat(dfs)# (s) Combine all the DataFrames in the file folder
     cat_dfs['s'] = (cat_dfs['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
     end_time = int(cat_dfs['s'].max())
-    start_time = int(cat_dfs['s'].min()) #isnt necessearily 0. Maybe you are only looking at a small portion of the data
+    start_time = int(cat_dfs['s'].min()) #is not necessarily 0. Maybe you are only looking at a small portion of the data
     
     # ====== Plotting
     fig, ax = plt.subplots()
     ax.plot(cat_dfs['s'],cat_dfs['V vs. Ref.'],'.k',markersize=20)
 
-    # ===== Plot Formattting
+    # ===== Plot Formatting
     ax.set_xlabel('Time (hrs)',fontsize = fontsize)
     ax.set_ylabel('Voltage (V)',fontsize = fontsize)
     ax.tick_params(axis='both', which='major', labelsize=fontsize-2) #changing tick label size
@@ -853,26 +905,26 @@ def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsi
     ax.spines['right'].set_visible(False)
     ax.set_ylim(0,1.5)
 
-    # ======= fitting and writting slope on graph: 
+    # ======= fitting and writing slope on graph: 
     if fit == True:
         m,b = np.polyfit(cat_dfs['s'],cat_dfs['V vs. Ref.'],1)
         fit = m*cat_dfs['s']+b
         ax.plot(cat_dfs['s'],fit,'--r')
         
         if quant_stb == 'mv':
-            mp = m * -1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degredation)
+            mp = m * -1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' mV/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'potential':
             init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * -1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and mult by 100 to get %/khrs)
+            mp = ((m * -1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
             ms = f'{round(mp,2)}'
             plt.figtext(0.40,0.17, ms+' %/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'overpotential':
             init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * -1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and mult by 100 to get %η/khrs))
+            mp = ((m * -1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
 
@@ -898,12 +950,12 @@ def plot_EC_galvanoStb(folder_loc:str,fit:bool=True,first_file = 'default', font
     fontsize, int: (default is 16)
         The font size of the words on the plot
     smooth, bool: (default is False)
-        Uses a moving average of 50 bins to average out datapoints and smooth out the line
+        Uses a moving average of 50 bins to average out data points and smooth out the line
     plot_ocv, bool: (default is False)
         Whether or not to plot the OCV as a dotted line on the plot
-        The ocv value is the average OCV of the first OCV file in the stabilty test
+        The ocv value is the average OCV of the first OCV file in the stability test
     clean_axis, string: (default = True)
-        When true, plotts the Voltage axis with less points
+        When true, plots the Voltage axis with less points
         This is a much cleaner way to plot and looks better when presenting
         however it clears out the Y axis so if you want to zoom in on an image, set this to False
     quant_stb, str: (default = 'mv')
@@ -933,13 +985,13 @@ def plot_EC_galvanoStb(folder_loc:str,fit:bool=True,first_file = 'default', font
             start = file1
     if first_file == 'default': #if another file is specified as the first file, this file will be used to find T0
         T0_stamp = fl.get_timestamp(file1) #gets time stamp from first file
-        t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
     else:
         T0_stamp = fl.get_timestamp(first_file) #gets time stamp from first file
-        t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
         start = first_file
 
-    # ------- Concatinating the FC mode Galvanostatic Dataframes
+    # ------- Concatenating the FC mode Galvanostatic DataFrames
     dfs = [] #Initializing list of dfs
     length = len(useful_files) #gets length of sorted useful files
     
@@ -953,17 +1005,17 @@ def plot_EC_galvanoStb(folder_loc:str,fit:bool=True,first_file = 'default', font
                 skip = data.line_num+1
                 break
         
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #creat data frame for a file
-        start_time = fl.get_timestamp(useful_files[i]).strftime("%s") #Find the start time of the file in s from epoch
+        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
+        start_time = fl.get_timestamp(useful_files[i]).strftime("%s") # Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
         dfs.append(df_useful)
 
-    cat_dfs = pd.concat(dfs,ignore_index=True)# (s) Combine all the dataframes in the file folder
+    cat_dfs = pd.concat(dfs,ignore_index=True)# (s) Combine all the DataFrames in the file folder
     cat_dfs.sort_values(by=['s'])
     cat_dfs['s'] = (cat_dfs['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
     end_time = int(cat_dfs['s'].max())
-    start_time = int(cat_dfs['s'].min()) #isnt necessearily 0. Maybe you are only looking at a small portion of the data
+    start_time = int(cat_dfs['s'].min()) #is not necessarily 0. Maybe you are only looking at a small portion of the data
 
     # ------- Plotting
     fig, ax = plt.subplots()
@@ -1014,26 +1066,26 @@ def plot_EC_galvanoStb(folder_loc:str,fit:bool=True,first_file = 'default', font
         ocv = df['V'].mean()
         ax.axhline(y=ocv,color='k',alpha=0.5,linestyle='--') 
 
-    # ------- fitting and writting slope on graph: 
+    # ------- fitting and writing slope on graph: 
     if fit == True:
         m,b = np.polyfit(cat_dfs['s'],cat_dfs['V vs. Ref.'],1)
         fit = m*cat_dfs['s']+b
         ax.plot(cat_dfs['s'],fit,'--r')
         
         if quant_stb == 'mv':
-            mp = m * -1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degredation)
+            mp = m * -1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' mV/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'potential':
             init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * -1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and mult by 100 to get %/khrs)
+            mp = ((m * -1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
             ms = f'{round(mp,2)}'
             plt.figtext(0.40,0.17, ms+' %/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'overpotential':
             init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * -1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and mult by 100 to get %η/khrs))
+            mp = ((m * -1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
 
@@ -1061,13 +1113,13 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
 
     # >>>>>>>> Getting the first time for reference
     T0_stamp = fl.get_timestamp(os.path.join(folder_loc,'PSTAT_5bias.DTA')) #gets time stamp from first file
-    t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+    t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
 
-    # >>>>>>>> extracting the useful information from the files and placing it into a dataframe
+    # >>>>>>>> extracting the useful information from the files and placing it into a DataFrame
     dfs = [] #Initializing list of dfs
     size = len(useful_files) #gets length of the useful files list
     for i in range(0,size,1):
-        loc = os.path.join(folder_loc,useful_files[i]) #Creats a file path to the file of choice
+        loc = os.path.join(folder_loc,useful_files[i]) #Creates a file path to the file of choice
         dta2csv(loc) #convert DTA to a CSV
         loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
         data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
@@ -1075,12 +1127,12 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
             if row[0] == 'CURVE':
                 skip = data.line_num+1
                 break
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #creat data frame for a file
+        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #create data frame for a file
         start_time = fl.get_timestamp(loc).strftime("%s") #Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','A','V vs. Ref.']]
         dfs.append(df_useful)
-    cat_dfs = pd.concat(dfs)# (s) Combine all the dataframes in the file folder
+    cat_dfs = pd.concat(dfs)# (s) Combine all the DataFrames in the file folder
     cat_dfs['s'] = (cat_dfs['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
     cat_dfs['A'] = cat_dfs['A'].div(area)
 
@@ -1098,7 +1150,7 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
             if row[0] == 'CURVE':
                 skip = ocv_data.line_num+1
                 break
-        df_ocv = pd.read_csv(loc_ocv_csv,sep= '\t',skiprows=skip,encoding='latin1') #creat data frame for a file
+        df_ocv = pd.read_csv(loc_ocv_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
         avg_ocv = df_ocv['V'].mean()
 
         # --- Initializing FIgure
@@ -1132,7 +1184,7 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
 
 def lnpo2(ohmic_asr:np.array,rp_asr:np.array,O2_conc:np.array): 
     '''
-    Plots ln(1/ASRs) as a function of ln(PO2), imputs are arrays of floats
+    Plots ln(1/ASRs) as a function of ln(PO2), inputs are arrays of floats
 
     Parameters:
     -----------
@@ -1176,7 +1228,7 @@ def lnpo2(ohmic_asr:np.array,rp_asr:np.array,O2_conc:np.array):
     axx2.set_xticklabels(O2_conc*100)
     axx2.set_xlim(-1.7,0.1)
     
-    # Figtext - If statement is to componsate for the fact that if Rp>ohmic Rp line is lower and visa-versa
+    # Figtext - If statement is to compensate for the fact that if Rp>ohmic Rp line is lower and visa-versa
     if ohmic_asr[0]<rp_asr[0]: 
         mo_str = f'{round(mo,2)}'
         plt.figtext(0.5,0.84,r'ASR$_\mathrm{O}$ Slope = '+mo_str,weight='bold')
@@ -1208,8 +1260,8 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
             useful_files.append(useful_file)
     
     # ------- Sorting the files
-    useful_files.sort(key=lambda x:x[1]) #Sorts by the second number in the tupple
-    sorted_useful_files_fc, numbers = zip(*useful_files) #splits the tupple
+    useful_files.sort(key=lambda x:x[1]) #Sorts by the second number in the tuple
+    sorted_useful_files_fc, numbers = zip(*useful_files) #splits the tuple
     sorted_useful_files_fc = [folder_loc + '/' + f for f in sorted_useful_files_fc] #Turning all files from their relative paths to the absolute path
 
     # ------- Getting the first time
@@ -1218,14 +1270,14 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
             file1_fc = os.path.join(folder_loc,file)
 
     T0_stamp = fl.get_timestamp(file1_fc) #gets time stamp from first file
-    t0 = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+    t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
 
-    # ------- Combining all dataframes
+    # ------- Combining all DataFrames
     dfs = [] #Initializing list of dfs
     length = len(sorted_useful_files_fc) #gets length of sorted useful files
     
     for i in range(0,length,1):
-        loc = os.path.join(folder_loc,sorted_useful_files_fc[i]) #Creats a file path to the file of choice
+        loc = os.path.join(folder_loc,sorted_useful_files_fc[i]) # Creates a file path to the file of choice
         dta2csv(loc) #convert DTA to a CSV
         loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
         data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
@@ -1235,13 +1287,13 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
                 skip = data.line_num+1
                 break
 
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #creat data frame for a file
+        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
         start_time = fl.get_timestamp(sorted_useful_files_fc[i]).strftime("%s") #Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
         dfs.append(df_useful)
 
-    cat_dfs_fc = pd.concat(dfs,ignore_index=True)# (s) Combine all the dataframes in the file folder
+    cat_dfs_fc = pd.concat(dfs,ignore_index=True)# (s) Combine all the DataFrames in the file folder
     cat_dfs_fc.sort_values(by=['s'])
     cat_dfs_fc['s'] = (cat_dfs_fc['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
     
@@ -1264,11 +1316,12 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
             file1_ec = os.path.join(folder_loc,file)
 
     T0_stamp = fl.get_timestamp(file1_ec) #gets time stamp from first file
-    t0_ec = T0_stamp.strftime("%s") #Conveting Datetime to seconds from Epoch
+    t0_ec = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
  
-    # ------- Concatinating the FC mode Galvanostatic Dataframes
+    # ------- Concatenating the FC mode Galvanostatic DataFrames
     dfs = [] #Initializing list of dfs
     length = len(useful_files_ec) #gets length of sorted useful files
+    
     for i in range(0,length,1):
         dta2csv(useful_files_ec[i]) #convert DTA to a CSV
         loc_csv = useful_files_ec[i].replace('.DTA','')+'.csv' #access newly made file
@@ -1277,18 +1330,19 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
             if row[0] == 'CURVE':
                 skip = data.line_num+1
                 break
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #creat data frame for a file
-        start_time = fl.get_timestamp(useful_files_ec[i]).strftime("%s") #Find the start time of the file in s from epoch
+        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
+        start_time = fl.get_timestamp(useful_files_ec[i]).strftime("%s") # Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
         dfs.append(df_useful)
-    cat_dfs_ec = pd.concat(dfs)# (s) Combine all the dataframes in the file folder
-    cat_dfs_ec['s'] = (cat_dfs_ec['s']-int(t0_ec))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
+    
+    cat_dfs_ec = pd.concat(dfs) # (s) Combine all the DataFrames in the file folder
+    cat_dfs_ec['s'] = (cat_dfs_ec['s']-int(t0_ec))/3600 # (hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
 
     # ------- Plotting
     ax.plot(cat_dfs_ec['s'],cat_dfs_ec['V vs. Ref.'],'.k')
 
-    ' ------- Formatting, fitting, and writting the slope on the graph: '
+    ' ------- Formatting, fitting, and writing the slope on the graph: '
     fontsize = 16
     ax.set_xlabel('Time (hrs)',fontsize = fontsize)
     ax.set_ylabel('Voltage (V)',fontsize = fontsize)
@@ -1305,14 +1359,14 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
         m_fc,b_fc = np.polyfit(cat_dfs_fc['s'],cat_dfs_fc['V vs. Ref.'],1)
         fit_fc = m_fc * cat_dfs_fc['s'] + b_fc
         ax.plot(cat_dfs_fc['s'],fit_fc,'--r')
-        mp_fc = m_fc * -100000 #Converting the slope into a % per khrs (*100 to get to %, *1000 to get to khrs,*-1 for degredation)
+        mp_fc = m_fc * -100000 #Converting the slope into a % per khrs (*100 to get to %, *1000 to get to khrs,*-1 for degradation)
         ms_fc = f'{round(mp_fc,3)}'
         
         # --- electrolysis cell mode
         m_ec,b_ec = np.polyfit(cat_dfs_ec['s'],cat_dfs_ec['V vs. Ref.'],1)
         fit_ec = m_ec * cat_dfs_ec['s'] + b_ec
         ax.plot(cat_dfs_ec['s'],fit_ec,'--r')
-        mp_ec = m_ec*100000 #Converting the slope into a % per khrs (*100 to get to %, *1000 to get to khrs,*-1 for degredation)
+        mp_ec = m_ec*100000 #Converting the slope into a % per khrs (*100 to get to %, *1000 to get to khrs,*-1 for degradation)
         ms_ec = f'{round(mp_ec,3)}'
 
         # --- Writing the slope on the graph
