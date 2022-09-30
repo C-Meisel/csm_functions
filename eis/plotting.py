@@ -648,7 +648,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
 
             m_mv = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
             m_mvs = f'{round(m_mv,2)}'
-            plt.figtext(0.43,0.13, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
+            plt.figtext(0.43,0.27, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
 
             m_volt = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
             m_volts = f'{round(m_volt,2)}'
@@ -656,7 +656,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
 
             m_over = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             m_overs= f'{round(m_over,2)}'
-            plt.figtext(0.44,0.27, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+            plt.figtext(0.44,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
 
     plt.tight_layout()
 
@@ -795,7 +795,7 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
 
             m_mv = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
             m_mvs = f'{round(m_mv,2)}'
-            plt.figtext(0.39,0.13, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
+            plt.figtext(0.39,0.27, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
 
             m_volt = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
             m_volts = f'{round(m_volt,2)}'
@@ -803,7 +803,7 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
 
             m_over = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             m_overs= f'{round(m_over,2)}'
-            plt.figtext(0.40,0.27, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+            plt.figtext(0.40,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
 
 
     plt.show()
@@ -837,6 +837,7 @@ def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsi
         (% of the starting potential lost during testing)
         if = overpotential, then the slope is multiplied by 1,000,000 then divided by the starting potential-OCV to get %/khrs
         (% of the overpotential lost during testing)
+        if = all, then all three of the above options are printed at on the figure
 
     Return --> none, but it plots the data, fits it, and shows it
     '''
@@ -928,6 +929,20 @@ def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsi
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
 
+        if quant_stb == 'all':
+            init_v = get_init_v(folder_loc,fc=False)
+            m_mv = m * -1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
+            m_p = ((m * -1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
+            m_o = ((m * -1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            
+            m_mvs = f'{round(m_mv,2)}'
+            m_ps = f'{round(m_p,2)}'
+            m_os = f'{round(m_o,2)}'
+
+            plt.figtext(0.39,0.27, m_mvs + ' mV/khrs', weight='bold',size='xx-large')
+            plt.figtext(0.39,0.20, m_ps + ' %/khrs', weight='bold',size='xx-large')
+            plt.figtext(0.39,0.13, m_os + ' %η/khrs', weight='bold',size='xx-large')
+
     plt.tight_layout()
     plt.show()
 
@@ -965,6 +980,7 @@ def plot_EC_galvanoStb(folder_loc:str,fit:bool=True,first_file = 'default', font
         (% of the starting potential lost during testing)
         if = overpotential, then the slope is multiplied by 1,000,000 then divided by the starting potential-OCV to get %/khrs
         (% of the overpotential lost during testing)
+        if = all, then all three of the above options are printed at on the figure
 
     Return --> none, but it plots the data, fits it, and shows it
     '''
@@ -1088,7 +1104,22 @@ def plot_EC_galvanoStb(folder_loc:str,fit:bool=True,first_file = 'default', font
             mp = ((m * -1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
+        
+        if quant_stb == 'all':
+            init_v = get_init_v(folder_loc,fc=False)
+            m_mv = m * -1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
+            m_p = ((m * -1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
+            m_o = ((m * -1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            
+            m_mvs = f'{round(m_mv,2)}'
+            m_ps = f'{round(m_p,2)}'
+            m_os = f'{round(m_o,2)}'
 
+            plt.figtext(0.44,0.27, m_mvs + ' mV/khrs', weight='bold',size='xx-large')
+            plt.figtext(0.44,0.20, m_ps + ' %/khrs', weight='bold',size='xx-large')
+            plt.figtext(0.44,0.13, m_os + ' %η/khrs', weight='bold',size='xx-large')
+
+    plt.tight_layout()
     plt.show()
 
 def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):

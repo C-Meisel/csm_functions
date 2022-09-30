@@ -1031,7 +1031,7 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
         if a10 == True:  
             'Sorting out relevant DRT files'         
             a10_ocv_fits = [file for file in os.listdir(jar_loc) if file.find('OCV10')!=-1] #Makes a list of all OCV files 
-            a10_ocv_fits = natsort.humansorted(a10_ocv_fits,reverse= rev)
+            a10_ocv_fits = natsort.humansorted(a10_ocv_fits,reverse = rev)
 
             "Finding the time from the correct EIS file"
             dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
@@ -1362,7 +1362,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
 
             'Setting up an array for the color map'
             color = np.linspace(0,1,len(a10_ocv_deg_peis)) # array from 0-1 for the colormap for plotting
-            cmap = plt.cm.get_cmap('cividis', end_time)
+            cmap = plt.cm.get_cmap('cmr.neon', end_time)
 
             'Plotting EIS'
             fig,ax = plt.subplots()
@@ -1446,7 +1446,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
             
 
             'Setting up an array for the color map'
-            cmap = plt.cm.get_cmap('cividis')
+            cmap = plt.cm.get_cmap('cmr.neon')
             color_space = np.linspace(0,1,len(a10_ocv_fits)) # array from 0-1 for the colormap for plotting
             c = 0 # index of the color array
 
@@ -1458,6 +1458,8 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
                 time = round((int(a10_ocv_deg_peis_time[i])-t0)/3600) # to convert to hours and round to the nearest hour from the test start
                 label = str(time) + ' Hours'
                 i = i+1
+                print(number,', ',map_fit_name, ', ', time, ', ',label)
+
 
                 # --- Plotting
                 inv = Inverter()
@@ -1471,7 +1473,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
 
 def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str = 'default',
                         a10:bool = True, eis:bool = True, drt:bool = True, cutoff_inductance = True,
-                        ncol:int = 1, legend_loc:str = 'outside', cbar:bool = True):
+                        ncol:int = 1, legend_loc:str = 'outside', cbar:bool = True, rev = True):
     '''
     Plots the EIS and the fit DRT of a cell taken at bias during a long term stability test. This function
     complements a Gamry sequence that I use to test the cell stability over time in electrolysis cell (EC) mode. 
@@ -1509,6 +1511,9 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
     cbar, Bool: (default = True)
         If this is set to true then the legend will just be a colorbar
         If false, then the normal legend will exist
+    rev, Bol: (Default = True)
+        Reverses the order that the DRT is shown in. This needs to be a variable because
+        a10_ocv_fits and a10_ocv_deg_peis_time need to move in tandem or the legend will be off
 
     Return --> None but one or more plots are created and shown
     '''
@@ -1642,7 +1647,7 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
         if a10 == True:  
             'Sorting out relevant DRT files'         
             a10_bias_fits = [file for file in os.listdir(jar_loc) if file.find('TNV10')!=-1] #Makes a list of all OCV files 
-            a10_bias_fits = natsort.humansorted(a10_bias_fits)
+            a10_bias_fits = natsort.humansorted(a10_bias_fits,reverse = rev)
 
             "Finding the time from the correct EIS file"
             dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
@@ -1654,10 +1659,14 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
                     bias_deg_peis_time.append(int(fl.get_timestamp(loc).strftime("%s")))
             
             'Sorting values by time'
-            a10_bias_deg_peis_time = natsort.humansorted(bias_deg_peis_time)
+            a10_bias_deg_peis_time = natsort.humansorted(bias_deg_peis_time,reverse = rev)
 
             'Setting up an array for the color map'
-            cmap = plt.cm.get_cmap('cividis')
+            if rev == True:
+                cmap = plt.cm.get_cmap('cividis_r')
+            if rev == False:
+                cmap = plt.cm.get_cmap('cividis')
+
             color_space = np.linspace(0,1,len(a10_bias_fits)) # array from 0-1 for the colormap for plotting
             c = 0 # index of the color array
 
