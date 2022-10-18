@@ -99,6 +99,7 @@ def deg_eis_fitter(folder_loc:str, jar_bias:str, jar_ocv:str, bias_amount:str='n
     files = os.listdir(folder_loc)
     files_eis_bias = []
     cell_name = os.path.basename(folder_loc).split("_", 3)[2]
+    
     for file in files: #looping over all files in the folder folder_loc
         if (file.find('PEIS')!=-1) and (file.find('_Deg')!=-1) and (file.find(bias_amount+'Bias')!=-1) and (file.find('.DTA')!=-1): #really specific to ensure no random EIS spectra get included
             number = file.split('_Deg')[1].split('.DTA')[0] #Splits the string of the file at _Deg and at .DTA and saves what is in the center
@@ -111,21 +112,22 @@ def deg_eis_fitter(folder_loc:str, jar_bias:str, jar_ocv:str, bias_amount:str='n
         fit_path = jar_bias
         fit_name = eis[1]+'.pkl'
         
-        pickel_jar = os.listdir(jar_bias)
+        pickle_jar = os.listdir(jar_bias)
 
-        pickel_name = 0
-        for pickel in pickel_jar: # checks to see if this has already been fit, if so name gets set to 1
-            if fit_name == pickel:
-                pickel_name = pickel_name + 1
+        pickle_name = 0
+        for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+            if fit_name == pickle:
+                pickle_name = pickle_name + 1
                 break
         
-        if pickel_name == 0: 
+        if pickle_name == 0: 
             map_drt_save(loc_eis,fit_path,fit_name,which=which,init_from_ridge=init_from_ridge)
 
     print('Done Fitting EIS for Degradation at Bias')
 
     if fit_ocv == True:
         files_eis_ocv = []
+        
         for file in files: #looping over all files in the folder folder_loc
             if (file.find('PEIS')!=-1) and (file.find('_Deg')!=-1) and (file.find(bias_amount+'Bias')==-1) and (file.find('.DTA')!=-1): #really specific to ensure no random EIS spectra get included
                 #==-1 on the bias one because I do not want to re-fit the EIS at bias
@@ -139,10 +141,10 @@ def deg_eis_fitter(folder_loc:str, jar_bias:str, jar_ocv:str, bias_amount:str='n
             fit_path = jar_ocv
             fit_name = eis[1]+'.pkl'
 
-            pickel_jar = os.listdir(jar_ocv)
+            pickle_jar = os.listdir(jar_ocv)
             name = 0
-            for pickel in pickel_jar: # checks to see if this has already been fit, if so name gets set to 1
-                if fit_name == pickel:
+            for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+                if fit_name == pickle:
                     name = name + 1
                     break
             
@@ -188,15 +190,15 @@ def ec_stb_eis_fitter(folder_loc:str, jar_bias_ec:str, jar_ocv_ec:str, fit_ocv:b
         fit_path = jar_bias_ec
         fit_name = eis[1]+'.pkl'
         
-        pickel_jar = os.listdir(jar_bias_ec)
+        pickle_jar = os.listdir(jar_bias_ec)
 
-        pickel_name = 0
-        for pickel in pickel_jar: # checks to see if this has already been fit, if so name gets set to 1
-            if fit_name == pickel:
-                pickel_name = pickel_name + 1
+        pickle_name = 0
+        for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+            if fit_name == pickle:
+                pickle_name = pickle_name + 1
                 break
         
-        if pickel_name == 0: 
+        if pickle_name == 0: 
             map_drt_save(loc_eis,fit_path,fit_name,which=which,init_from_ridge=init_from_ridge)
 
     print('Done Fitting EIS for Degradation at Bias')
@@ -216,10 +218,10 @@ def ec_stb_eis_fitter(folder_loc:str, jar_bias_ec:str, jar_ocv_ec:str, fit_ocv:b
             fit_path = jar_ocv_ec
             fit_name = eis[1]+'.pkl'
 
-            pickel_jar = os.listdir(jar_ocv_ec)
+            pickle_jar = os.listdir(jar_ocv_ec)
             name = 0
-            for pickel in pickel_jar: # checks to see if this has already been fit, if so name gets set to 1
-                if fit_name == pickel:
+            for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+                if fit_name == pickle:
                     name = name + 1
                     break
             

@@ -652,6 +652,90 @@ def leis_plot(data_loc:str,label:str, normalize:bool=False, **plot_args):
     plt.tight_layout()
 
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+"XPS"
+'Functions to help me format and plot X-ray photoelectron spectroscopy raw data taken from the Environmental XPS in the Coorstek Building'
+#/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+def plot_xps(loc:str, normalize:bool=False, label:str = None):
+    '''
+    Takes a .txt file from the XPS machine and plots the data
+    Can plot multiple plots on one figure
+    Parameters
+    ----------
+    loc, str:
+        Location of the .txt XPS file
+    normalize, boolean: (default = False)
+        Whether or not to normalize the data to the highest point
+    label, str: (default = None)
+        Label of the spectra in the plot legend. If the default is selected no legend will be added
+        if a label is added then a legend will pe placed on the plot and the label will coincide with the spectra
+    
+    '''
+
+    # ----- Extracting the X axis for the XPS plot
+    datafile = open(loc, 'r')
+    data = [line.split(',') for line in datafile.readlines()]
+
+    x_string = str(data[8])
+    x_string = x_string[20:-4]
+    x_list = x_string.split(' ')
+    x_int_list = [int(str) for str in x_list]
+    # print(len(x_int_list))
+
+    ' ----- Extracting the Y data '
+    # -- Figuring out how many rows to skip
+    for i,line in enumerate(data):
+        line = str(line)
+        if line[2:10] == '[Data 1]':
+            data_start = i+1
+
+    raw_data = data[data_start:-1] # For whatever reason this doesnt work if the last datapoint is selected (likely it is just a line break)
+    
+    # -- Extracting each point and finding the average of each point (each point is a binding energy (x value))
+    y_data = []
+    for point in raw_data:
+        string = str(point) # Converting measurement array into a string
+        y_string = string[3:-4] # Removing garbage at the beginning and end of the number
+        y_list = y_string.split('  ') # Splitting up the string by a few spaces, this isolates each number
+        y_float_list = [float(str) for str in y_list] # Converting each number to a float
+        y_float_list = y_float_list[1:] # The first value in the dataset is the binding energy, this is not needed and will throw off the data
+        y_array = np.array(y_float_list) # converitin the list to an numpy array
+        avg = np.mean(y_array) # finding the average of the array at each datapoint. This is just my guess at what Casa XPS graphs
+        y_data.append(avg) # Appending the average value to the Y-data list
+
+    # -- Whether or not to normalize the data
+    if normalize == True:
+        maximum = np.max(y_data)
+        y_data = y_data/maximum
+
+    # ----- Plotting
+    plt.plot(x_int_list, y_data, label=label)
+
+    # -- Basic formatting
+    plt.ylabel('Intensity', fontsize='xx-large')
+    plt.xlabel('Binding Energy (Ev)', fontsize='xx-large')
+    plt.tick_params(axis='both', which='major', labelsize = 'x-large')
+
+    # Inverting the x axis
+    ax = plt.gca()
+    ax.set_xlim(ax.get_xlim()[::-1])
+
+    # -- Excessive formatting (less than usual)
+    if normalize == True:
+        plt.ylabel('Relative Intensity (a.u)', fontsize='xx-large')
+        plt.yticks([])
+
+    # Getting rid on axis lines
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    if label is not None:
+        plt.legend(loc='best',fontsize='x-large')
+
+
+    plt.tight_layout()
+    plt.show()
+
+#/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "EPMA"
 'Functions to help me format and plot electron probe micro analyzer (EPMA) data taken at KICET in South Korea'
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\

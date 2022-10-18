@@ -1233,12 +1233,13 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
         
         if a10 == True:  
             'Sorting out relevant DRT files'         
-            a10_bias_fits = [file for file in os.listdir(jar_loc) if file.find('n3_Bias10')!=-1] #Makes a list of all OCV files 
+            a10_bias_fits = [file for file in os.listdir(jar_loc) if file.find('n3_Bias10')!=-1] #Makes a list of all Bias files 
             a10_bias_fits = natsort.humansorted(a10_bias_fits)
 
             "Finding the time from the correct EIS file"
             dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
             bias_deg_peis_time = [] #initializing bias files list
+            
             for file in dta_files: #Finding all fuel cell bias EIS files
                 if (file.find('PEIS')!=-1) and (file.find('_Deg10')!=-1) and (file.find('n3Bias')!=-1):
                     loc = os.path.join(folder_loc,file)

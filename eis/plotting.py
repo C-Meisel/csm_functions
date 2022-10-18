@@ -461,9 +461,14 @@ def plot_ivecs(area:float,condition:str,loc:str):
     Plots multiple electrolysis cell mode IV curves on same plot. This function can stack to plot
     multiple IVEC files on the same plot. Same as peiss.
 
-    param area,float: The active cell area in cm^2
-    param condition,string: The condition of the IV curve. This will be the label of the curve in the legend
-    param loc,string: The location .DTA file that contains the IVEC curve
+    Parameters:
+    -----------
+    area, float: 
+        The active cell area in cm^2
+    condition, string: 
+        The condition of the IV curve. This will be the label of the curve in the legend
+    loc, string: 
+        The location .DTA file that contains the IVEC curve
     
     Return --> none but it plots the figure
     '''
@@ -496,7 +501,7 @@ def plot_ivecs(area:float,condition:str,loc:str):
     plt.tight_layout()
 
 def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:bool=False,
-                     first_file:str = 'default', clean_axis=True, quant_stb = 'mv'):
+                     first_file:str = 'default', clean_axis=True, quant_stb = 'mv', **kwargs):
     '''
     Looks through the specified folder and plots all the galvanostatic stability testing data in one plot, 
     and fits it. This function compliments the gamry sequence I use for fuel cell mode stability testing
@@ -527,10 +532,13 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         if = overpotential, then the slope is multiplied by 1,000,000 then divided by the starting potential-OCV to get %/khrs
         (% of the overpotential lost during testing)
         if = all, then all three of the above options are printed at on the figure
+    plot_args, dict:
+        Any arguments that are passed to the plot function.
+        generally for presentations I use markersize = 20
 
     Return --> none but it plots the figure and shows it
     '''
-    
+
     files = os.listdir(folder_loc) # obtaining a list of the files in the desired folder
     useful_files = [] # initializing a list for the useful files
 
@@ -591,15 +599,18 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
 
     # ------- plotting:
     fig, ax = plt.subplots()
+
+    if len(kwargs)==0: # Basically if hte dictionary is empty
+        kwargs['markersize'] = 20
     
     if smooth == False:
-        ax.plot(cat_dfs['s'],cat_dfs['V vs. Ref.'],'.k',markersize=20)
+        ax.plot(cat_dfs['s'],cat_dfs['V vs. Ref.'],'.k',**kwargs) # For presentations set markersize to 20
 
     if smooth == True: #Averages out data points to smooth the curve
         bin_size = 50
         bins = cat_dfs['V vs. Ref.'].rolling(bin_size)
         moving_avg_voltage = bins.mean()
-        ax.plot(cat_dfs['s'],moving_avg_voltage,'k',markersize=20)
+        ax.plot(cat_dfs['s'],moving_avg_voltage,'k',**kwargs)
 
     # ------- Plot formatting
     ax.set_xlabel('Time (hrs)',fontsize = fontsize)
@@ -639,7 +650,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         
         if quant_stb == 'overpotential':
             init_v = get_init_v(folder_loc,fc=True)
-            mp = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            mp = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
         
@@ -654,9 +665,9 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
             m_volts = f'{round(m_volt,2)}'
             plt.figtext(0.43,0.20, m_volts + ' %/khrs',weight='bold',size='xx-large')
 
-            m_over = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            m_over = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             m_overs= f'{round(m_over,2)}'
-            plt.figtext(0.44,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+            plt.figtext(0.43,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
 
     plt.tight_layout()
 
@@ -786,7 +797,7 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
         
         if quant_stb == 'overpotential':
             init_v = get_init_v(folder_loc,fc=False)
-            mp = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            mp = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             ms = f'{round(mp,2)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
         
@@ -801,9 +812,9 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
             m_volts = f'{round(m_volt,2)}'
             plt.figtext(0.39,0.20, m_volts + ' %/khrs',weight='bold',size='xx-large')
 
-            m_over = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            m_over = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             m_overs= f'{round(m_over,2)}'
-            plt.figtext(0.40,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+            plt.figtext(0.39,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
 
 
     plt.show()
@@ -1127,9 +1138,14 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
     Plots the 30 minute potentiostatic holds in between the bias EIS spectra.
     This function complements the gamry sequence I use for bias testing.
 
-    param area, float: The active cell area in cm^2
-    param folder_loc, string: The location of the folder containing the files to be plotted
-    param voltage, bool: Whether or not to plot the voltage with the current
+    Parameters:
+    -----------
+    area, float:
+        The active cell area in cm^2
+    folder_loc, string:
+        The location of the folder containing the files to be plotted
+    voltage, bool: 
+        Whether or not to plot the voltage with the current
 
     Return --> none, but it plots the data and shows it
     '''
@@ -1143,8 +1159,13 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
             useful_files.append(file)
 
     # >>>>>>>> Getting the first time for reference
-    T0_stamp = fl.get_timestamp(os.path.join(folder_loc,'PSTAT_5bias.DTA')) #gets time stamp from first file
-    t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
+    if len(useful_files) == 10:
+        T0_stamp = fl.get_timestamp(os.path.join(folder_loc,'PSTAT_5bias.DTA')) #gets time stamp from first file
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
+
+    elif len(useful_files) == 9:
+        T0_stamp = fl.get_timestamp(os.path.join(folder_loc,'PSTAT_4bias.DTA')) #gets time stamp from first file
+        t0 = T0_stamp.strftime("%s") #Converting Datetime to seconds from Epoch
 
     # >>>>>>>> extracting the useful information from the files and placing it into a DataFrame
     dfs = [] #Initializing list of dfs
