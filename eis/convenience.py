@@ -253,7 +253,7 @@ def standard_performance(loc:str, jar:str, area:float=0.5, **peis_args):
 
 def po2_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=True,
                  o2_dependence:bool=True, drt_peaks:bool=True, print_resistance_values:bool=False,
-                  ncol:int=1, legend_loc:str='best', flow100:bool = False):
+                  ncol:int=1, legend_loc:str='best', flow100:bool = False, cut_inductance:bool = False):
     '''
     Searches through the folder_loc for all the changes in O2 concentration EIS files.
     Map-fits all of hte eis files and saves them to fit_path. If the files are already fit, they will not be re-fit.
@@ -289,6 +289,8 @@ def po2_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=
         Set this to true if the total flow rate for the PO2 test was 100 SCCM
         for my older tests (cell 16 and below) my total flow rate was 100 SCCM
         This just changes the list of strings to look for
+    cut_inductance, bool: (default = False)
+        If this is set to true, the negative inductance values at the beginning of the DataFrame
         
     Return --> None, but it plots and shows one or more plots
     '''
@@ -323,7 +325,7 @@ def po2_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=
                 nyquist_name = po2 + '% O$_2$'
 
             # --- Plotting
-            plot_peiss(area,nyquist_name,loc,ncol=ncol,legend_loc=legend_loc)
+            plot_peiss(area,nyquist_name,loc,ncol=ncol,legend_loc=legend_loc,cut_inductance = cut_inductance)
 
         plt.show()
 

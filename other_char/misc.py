@@ -156,7 +156,7 @@ def eds_line_plot(loc_csv:str, only:list = [''], reverse:bool = False,
     # Plotting
     fig, ax = plt.subplots() #Starts Plot
     if nm == True:
-        df[' Distance (um)'] = df[' Distance (um)'].values/1000 #Converts to nm
+        df[' Distance (um)'] = df[' Distance (um)'].values * 1000 #Converts to nm
     if len(only[0])==0: #If there are no specified elements in only, then all elements will be plotted
         for col in cols: #Plots all of the columns
             ax.plot(df[' Distance (um)'],df[col],label = col,linewidth=2)
@@ -195,6 +195,69 @@ def eds_line_plot(loc_csv:str, only:list = [''], reverse:bool = False,
     plt.tight_layout()
     plt.show()
 
+def tem_eds_line_plot(loc:str, only:list = [''], sort_bczyyb:bool = True, 
+                    nm:bool = True):
+    '''
+    Plots EDS line scan data from the Bruker software from the Talos SEM
+
+    Parameters:
+    -----------
+    loc, str: (path to a file)
+        Path to the .txt file containing the EDS line scan data
+    only, list: (Default = [''])
+        List of elements that you want to plot. If empty, all elements are plotted
+    sort_bczyyb, bool: (Default = True)
+        If True, the data is sorted by the order of the elements in BCZYYb for the plot legend
+    nm, bool: (Default = True)
+        If the measurement is in nm then this should be set to true
+
+    Return --> None but a plot is generated and shown
+    '''
+    
+    df = pd.read_csv(loc,encoding='latin1',index_col=False,delim_whitespace=True) #creates DataFrame, in this case sep needs to be ,
+    df.drop(columns=['Index'],inplace=True)
+
+    group_cols = df.columns[1:].values.tolist() # if there are multiple data points from one spot, it averages them
+    df = df.groupby('µm',as_index=False)[group_cols].mean()
+
+    if sort_bczyyb == True: # Sorts the elements into the proper BCZYYb order
+        print(df.columns)
+        df, cols = sort_bczyyb_eds(df, SEM=False)
+    else:
+        cols = list(df.columns.values) #Makes list of cols
+        for i,col in enumerate(cols): #Ensures that the index for distance is right
+            if col == 'µm':
+                index = i
+                break
+        cols.pop(index) #Drops Distance from cols list
+
+    if nm == True: # Converts distance to nm from microns
+        df['µm'] = df['µm'].values * 1000 #Converts to nm
+
+    # ----- Plotting
+    fig, ax = plt.subplots() #Starts Plot
+
+    for col in cols: #Plots all of the columns
+        ax.plot(df['µm'],df[col],label = col,linewidth=2)
+
+    # --- Plot formatting
+    plt.legend(fontsize='large')
+
+    if nm == False:
+        ax.set_xlabel('Distance ($\mu$m)',size='xx-large')
+    else:
+        ax.set_xlabel('Distance (nm)',size='xx-large')
+
+    ax.set_ylabel('Intensity (a.u.)',size='xx-large')
+
+    # - Excess formatting
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.tick_params(axis='both', which='major', labelsize='x-large')
+
+    plt.tight_layout()
+    plt.show()
+           
 def eds_mapping(folder_loc:str):
     '''
     When given a folder containing EDS mapping data, this will extract the data for each element
@@ -317,7 +380,7 @@ def eds_mapping(folder_loc:str):
 
     plt.show()
 
-def sort_bczyyb_eds(df:pd.DataFrame):
+def sort_bczyyb_eds(df:pd.DataFrame, SEM=True):
     '''
     Takes a DataFrame of EDS line data, sorts it such that the first elements are 
     Ba, Ce, Zr, Y, Yb, Ni, O, and then the rest of the elements are in alphabetical order
@@ -328,51 +391,86 @@ def sort_bczyyb_eds(df:pd.DataFrame):
     ----------
     df, pd.DataFrame:
         DataFrame of EDS line data
+    SEM, bool: (Default = True)
+        Sorts an SEM EDS line scan from the TESCAN SEM in the Coorstek building
+        if false, sorts a line scan from the TALOS TEM also in the Coorstek building
     
     Return:
     -------
     df --> The new DataFrame with the columns sorted the desired way
     cols --> The list of the columns in the new DataFrame without distance
     '''
-    df = df.reindex(sorted(df.columns), axis=1) #sorts elements alphabetically
+    if SEM == True:
+        df = df.reindex(sorted(df.columns), axis=1) #sorts elements alphabetically
 
-    Ba_column = df.pop(' Ba L') # Barium to first spot
-    df.insert(0, ' Ba L', Ba_column)
-    Ce_column = df.pop(' Ce L') # Cerium to second spot
-    df.insert(1, ' Ce L', Ce_column)
-    if ' Zr L' in df.columns: # Zirconium to third spot
-        Zr_column = df.pop(' Zr L') 
-        df.insert(2, ' Zr L', Zr_column)
-    else:
-        Zr_column = df.pop(' Zr K') 
-        df.insert(2, ' Zr K', Zr_column)  
-    if ' Y L' in df.columns:
-        Y_column = df.pop(' Y L') 
-        df.insert(3, ' Y L', Zr_column)
-    else:
-        Y_column = df.pop(' Y K') # Yttrium
-        df.insert(3, ' Y K', Y_column)
-    if ' Yb M' in df.columns: #ytterbium, checking to see which band is being plotted
-        Yb_column = df.pop(' Yb M')
-        df.insert(4, ' Yb M', Yb_column)
-    else:
-        Yb_column = df.pop(' Yb L')
-        df.insert(4, ' Yb L', Yb_column)
-    if ' Ni K' in df.columns:
-        Ni_column = df.pop(' Ni K')
-        df.insert(5, ' Ni K', Ni_column)
-    if ' O K' in df.columns:
-        O_column = df.pop(' O K')
-        df.insert(6, ' O K', O_column)
+        Ba_column = df.pop(' Ba L') # Barium to first spot
+        df.insert(0, ' Ba L', Ba_column)
+        Ce_column = df.pop(' Ce L') # Cerium to second spot
+        df.insert(1, ' Ce L', Ce_column)
+        if ' Zr L' in df.columns: # Zirconium to third spot
+            Zr_column = df.pop(' Zr L') 
+            df.insert(2, ' Zr L', Zr_column)
+        else:
+            Zr_column = df.pop(' Zr K') 
+            df.insert(2, ' Zr K', Zr_column)  
+        if ' Y L' in df.columns:
+            Y_column = df.pop(' Y L') 
+            df.insert(3, ' Y L', Zr_column)
+        else:
+            Y_column = df.pop(' Y K') # Yttrium
+            df.insert(3, ' Y K', Y_column)
+        if ' Yb M' in df.columns: #ytterbium, checking to see which band is being plotted
+            Yb_column = df.pop(' Yb M')
+            df.insert(4, ' Yb M', Yb_column)
+        else:
+            Yb_column = df.pop(' Yb L')
+            df.insert(4, ' Yb L', Yb_column)
+        if ' Ni K' in df.columns:
+            Ni_column = df.pop(' Ni K')
+            df.insert(5, ' Ni K', Ni_column)
+        if ' O K' in df.columns:
+            O_column = df.pop(' O K')
+            df.insert(6, ' O K', O_column)
 
-    cols = list(df.columns.values) #Makes list of cols
-    index = 0
-    for i,col in enumerate(cols): #Ensures that the index for distance is right
-        if col == ' Distance (um)':
-            index = i
-            break
+        cols = list(df.columns.values) #Makes list of cols
+        index = 0
+        for i,col in enumerate(cols): #Ensures that the index for distance is right
+            if col == ' Distance (um)':
+                index = i
+                break
 
-    cols.pop(index) #Drops Distance from cols list
+        cols.pop(index) #Drops Distance from cols list
+    
+    else:
+        df = df.reindex(sorted(df.columns), axis=1) #sorts elements alphabetically
+
+        Ba_column = df.pop('Ba') # Barium to first spot
+        df.insert(0, 'Ba', Ba_column)
+
+        Ce_column = df.pop('Ce') # Cerium to second spot
+        df.insert(1, 'Ce', Ce_column)
+
+        Zr_column = df.pop('Zr') # Zirconium to the third spot
+        df.insert(2, 'Zr', Zr_column)
+
+        Y_column = df.pop('Y') # Yttrium to the fourth spot
+        df.insert(3, 'Y', Y_column)
+        
+        Yb_column = df.pop('Yb') # Ytterbium to the fifth spot
+        df.insert(4, 'Yb', Yb_column)
+
+        O_column = df.pop('O') # Oxygen to the sixth spot
+        df.insert(5, 'O', O_column)
+        
+        cols = list(df.columns.values) #Makes list of cols
+        index = 0
+        for i,col in enumerate(cols): #Ensures that the index for distance is right
+            if col == 'µm':
+                index = i
+                break
+
+        cols.pop(index) #Drops Distance from cols list
+
     
     return df, cols
 
@@ -655,7 +753,7 @@ def leis_plot(data_loc:str,label:str, normalize:bool=False, **plot_args):
 "XPS"
 'Functions to help me format and plot X-ray photoelectron spectroscopy raw data taken from the Environmental XPS in the Coorstek Building'
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
-def plot_xps(loc:str, normalize:bool=False, label:str = None):
+def plot_xps(loc:str, normalize:bool=False, label:str = None, flip_x:bool = False):
     '''
     Takes a .txt file from the XPS machine and plots the data
     Can plot multiple plots on one figure
@@ -668,7 +766,11 @@ def plot_xps(loc:str, normalize:bool=False, label:str = None):
     label, str: (default = None)
         Label of the spectra in the plot legend. If the default is selected no legend will be added
         if a label is added then a legend will pe placed on the plot and the label will coincide with the spectra
+    flip_x, bool: (default = False)
+        The x-data for each plot needs to be flipped. Each plot has the data for all plots flipped.
+        Therefore when an even number of plots are plot, the x-axes needs to be flipped one more time
     
+    Return --> None, but a graph is plotted though it is not shown
     '''
 
     # ----- Extracting the X axis for the XPS plot
@@ -678,7 +780,7 @@ def plot_xps(loc:str, normalize:bool=False, label:str = None):
     x_string = str(data[8])
     x_string = x_string[20:-4]
     x_list = x_string.split(' ')
-    x_int_list = [int(str) for str in x_list]
+    x_int_list = [float(str) for str in x_list]
     # print(len(x_int_list))
 
     ' ----- Extracting the Y data '
@@ -719,6 +821,9 @@ def plot_xps(loc:str, normalize:bool=False, label:str = None):
     ax = plt.gca()
     ax.set_xlim(ax.get_xlim()[::-1])
 
+    if flip_x == True:
+        ax.set_xlim(ax.get_xlim()[::-1])
+
     # -- Excessive formatting (less than usual)
     if normalize == True:
         plt.ylabel('Relative Intensity (a.u)', fontsize='xx-large')
@@ -733,7 +838,6 @@ def plot_xps(loc:str, normalize:bool=False, label:str = None):
 
 
     plt.tight_layout()
-    plt.show()
 
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "EPMA"

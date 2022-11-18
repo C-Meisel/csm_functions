@@ -86,16 +86,32 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
 
     # Plotting
     if pro == False:
-        plot = plt.figure()
-        plt.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,color = '#21314D') # #21314D is the color of Mines Navy blue
-        plt.xlabel('Zreal (\u03A9 cm$^2$)')
-        plt.ylabel('-Zimag (\u03A9 cm$^2$)')
-        plt.axhline(y=0, color='#D2492A', linestyle='-.') # #D2492A is the color of Mines orange
-        plt.rc('font', size=16)
-        plt.axis('scaled')
-        return plot
+        # plot = plt.figure()
+        # plt.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,color = '#21314D') # #21314D is the color of Mines Navy blue
+        # plt.xlabel('Zreal (\u03A9 cm$^2$)')
+        # plt.ylabel('-Zimag (\u03A9 cm$^2$)')
+        # plt.axhline(y=0, color='#D2492A', linestyle='-.') # #D2492A is the color of Mines orange
+        # plt.rc('font', size=16)
+        # plt.axis('scaled')
 
-    elif pro == True: # Plot like a Pro, breh. Just messing around at this point
+        fig, ax = plt.subplots()
+
+        # -- Formatting
+        ax.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,color = '#21314D',markersize = 10)
+        ax.set_xlabel('Zreal (\u03A9 cm$^2$)', size = 'xx-large')
+        ax.set_ylabel('-Zimag (\u03A9 cm$^2$)', size = 'xx-large')
+        ax.axhline(y=0, color='#D2492A', linestyle='-.') # #D2492A is the color of Mines orange
+        ax.axis('scaled') #Keeps X and Y axis scaled 1 to 1
+
+        # - Excessive formatting
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.tick_params(axis='both', which='major', labelsize='x-large')
+        plt.tight_layout()
+
+        return fig
+
+    elif pro == True: # Plot like a Pro, breh
         fig,ax = plt.subplots()
         ax.plot(df_useful['ohm'],df_useful['ohm.1'],'D',**plot_args,color = '#336699',alpha=0.69,markeredgewidth=0.2,
             markeredgecolor='#cfcfcf',ms=8,antialiased=True) # #21314D is the color of Mines Navy blue ##09213c #0c2d52
@@ -1411,14 +1427,14 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
         m_fc,b_fc = np.polyfit(cat_dfs_fc['s'],cat_dfs_fc['V vs. Ref.'],1)
         fit_fc = m_fc * cat_dfs_fc['s'] + b_fc
         ax.plot(cat_dfs_fc['s'],fit_fc,'--r')
-        mp_fc = m_fc * -100000 #Converting the slope into a % per khrs (*100 to get to %, *1000 to get to khrs,*-1 for degradation)
+        mp_fc = m_fc * 1000000 #Converting the slope into a % per khrs
         ms_fc = f'{round(mp_fc,3)}'
         
         # --- electrolysis cell mode
         m_ec,b_ec = np.polyfit(cat_dfs_ec['s'],cat_dfs_ec['V vs. Ref.'],1)
         fit_ec = m_ec * cat_dfs_ec['s'] + b_ec
         ax.plot(cat_dfs_ec['s'],fit_ec,'--r')
-        mp_ec = m_ec*100000 #Converting the slope into a % per khrs (*100 to get to %, *1000 to get to khrs,*-1 for degradation)
+        mp_ec = m_ec * -1000000 #Converting the slope into a % per khrs
         ms_ec = f'{round(mp_ec,3)}'
 
         # --- Writing the slope on the graph
