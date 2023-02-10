@@ -1,5 +1,6 @@
 ''' This module contains functions to help format Electrohchemical Impedance Spectroscopy (EIS)
 data. The data files are obtained by a Gamry potentiostat. The files are .DTA files
+This is a second attempt at making data processing functions
 # C-Meisel
 '''
 
@@ -9,6 +10,118 @@ import csv
 from shutil import copyfile
 import os
 
+def read_dta(loc:str):
+    '''
+    Reads a gamry .DTA file and saves the data as an string
+    These 6 lines of code are copied from fileload.py in Hybrid_drt (by Jake Huang)
+
+    Parameters:
+    ------------
+    loc, str: location of a gamry .DTA file
+
+    return --> string containg the data stored in the .DTA file
+    '''
+    try:
+        with open(loc, 'r') as f:
+            txt = f.read()
+    except UnicodeDecodeError:
+        with open(loc, 'r', encoding='latin1') as f:
+            txt = f.read()
+
+    return(txt)
+
+def get_ocv_data(loc:str):
+    '''
+    Reads a gamry .DTA file for an OCV scan and returns the OCV data
+     
+    Parameters:
+    -----------
+    loc, str: location of gamry .dta file to get the eis data from
+
+    return --> dataframe with the ocv data 
+    '''
+    txt = read_dta(loc) # Reading the Gamry .DTA file and storing as a string
+
+    # --- Finding the start of the data (Also informed by Hybrid_drt)
+    data_flag = txt.find('CURVE')
+    metadata = txt[:data_flag] # figure out where the metadata ends
+    skiprows = len(metadata.split('\n')) + 1
+    df = pd.read_csv(loc,sep='\t',skiprows=skiprows,encoding='latin1',engine='python')
+
+    return(df)
+
+def get_eis_data(loc:str):
+    '''
+    Reads a gamry .DTA file for a potentiostatic EIS scan 
+    and returns the EIS data as a dataframe.
+     
+    Parameters:
+    ------------
+    loc, str: location of gamry .dta file to get the eis data from
+
+    return --> dataframe with the eis data 
+    '''
+    txt = read_dta(loc) # Reading the Gamry .DTA file and storing as a string
+
+    # --- Finding the start of the data (Also informed by Hybrid_drt)
+    data_flag = txt.find('ZCURVE')
+    metadata = txt[:data_flag] # figure out where the metadata ends
+    skiprows = len(metadata.split('\n')) + 1
+    df = pd.read_csv(loc,sep='\t',skiprows=skiprows,encoding='latin1',engine='python')
+    
+    return(df)
+
+def get_eis_ocv_data(loc:str):
+    '''
+    Reads a gamry .DTA file for a potentiostatic EIS scan 
+    and returns the OCV data as a dataframe.
+     
+    Parameters:
+    ------------
+    loc, str: location of gamry .dta file to get the eis data from
+
+    return --> dataframe with the eis data 
+    '''    
+    txt = read_dta(loc) # Reading the Gamry .DTA file and storing as a string
+
+    # --- Finding the start of the data (Also informed by Hybrid_drt)
+    data_flag = txt.find('OCVCURVE')
+    metadata = txt[:data_flag] # figure out where the metadata ends
+    skiprows = len(metadata.split('\n')) + 1
+    footer_flag = txt.find('EOC') # Figure out where OCV data ends
+    skipfooter = len(txt[footer_flag:].split('\n')) - 1
+    df = pd.read_csv(loc,sep='\t',skiprows=skiprows,encoding='latin1',
+    skipfooter=skipfooter,engine='python')
+
+    return(df)
+
+def get_iv_data(loc:str):
+    '''
+    Reads a gamry .DTA file for a polarization (IV) curve
+    and returns the data table as a dataframe.
+
+    This function also works for galvanostatic holds
+     
+    Parameters:
+    ------------
+    loc, str: location of gamry .dta file to get the IV data
+
+    return --> dataframe with the IV data 
+    '''
+    txt = read_dta(loc) # Reading the Gamry .DTA file and storing as a string
+
+    # --- Finding the start of the data (Also informed by Hybrid_drt)
+    data_flag = txt.find('CURVE')
+    metadata = txt[:data_flag] # figure out where the metadata ends
+    skiprows = len(metadata.split('\n')) + 1 # Finding how many rows to skip before the data starts
+
+    df = pd.read_csv(loc,sep='\t',skiprows=skiprows,encoding='latin1',engine='python')
+    
+    return(df)
+
+
+
+' --- Older Data Functions '
 def dta2csv(loc:str):
     '''
     Duplicates the .DTA files and converts it to a .CSV file
@@ -19,7 +132,7 @@ def dta2csv(loc:str):
     '''
     file = loc
     copyfile(file, file.replace('.DTA','')+'.csv')
-    
+
 def iv_data(area:float, loc:str) -> pd.DataFrame:
     '''
     Takes a .DTA file from an polarization curve (IV curve), extracts the voltage and amperage,

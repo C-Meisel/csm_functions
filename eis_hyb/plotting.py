@@ -1,5 +1,7 @@
 ''' This module contains functions to help format and plot Electrochemical Impedance Spectroscopy (EIS)
 data. The data files are obtained by a Gamry potentiostat. The files are .DTA files
+This module is to be using in conjunction with the hybrid_DRT package developed by Jake Huang
+This is a second attempt at making plotting functions (more streamlined than plotting found in eis)
 # C-Meisel
 '''
 
@@ -9,44 +11,41 @@ import csv
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-# from bayes_drt2 import file_load as fl
+from hybdrt import fileload as fl
 import os
 from matplotlib.ticker import FormatStrFormatter
+from io import StringIO
 
-from .data_formatting import * # dta2csv, get_init_ocv, cut_induct
+from .data_formatting import *
 
 def plot_ocv(loc : str):
     '''
-    Plots OCV vs time from a .DTA file
+    Plots OCV vs time from a .DTA file generated from a Gamry Potentiostat
 
-    Param loc,str: Location of the .DTA file that contains the OCV data.
+    Parameter:
+    ----------
+    loc,str: Location of the .DTA file that contains the OCV data.
 
     returns: the plot of the figure
     '''
-    dta2csv(loc)
-    loc_csv = loc.replace('.DTA','')+'.csv'
-    file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-    skip = 0
-    for row in file: #searches first column of each row in csv for "CURVE", then adds 1. This gives the right amount of rows to skip
-        if row[0] == 'CURVE':
-            skip = file.line_num+1
-            break
-        if row[0] == 'READ VOLTAGE': #For whatever reason the DTA files are different if the data is aborted
-            skip = file.line_num+1
-            break
-    df = pd.read_csv(loc_csv,sep='\t',skiprows=skip,encoding='latin1')
+    df = get_ocv_data(loc) # Reads the .DTA file and saves the OCV data as a dataframe
+
     df_useful = df[['s','V']]
-    plot = plt.figure()
-    plt.plot(df_useful['s'],df_useful['V'],'ko',)
-    plt.xlabel('Time (s)',fontsize='xx-large')
-    plt.ylabel('Voltage (V)',fontsize='xx-large')
-    plt.tick_params('both',labelsize = 'x-large')
+    fig, ax = plt.subplots()
+    ax.plot(df_useful['s'],df_useful['V'],'ko')
+
+    # - Formatting
+    ax.set_xlabel('Time (s)',fontsize='xx-large')
+    ax.set_ylabel('Voltage (V)',fontsize='xx-large')
+    ax.tick_params('both',labelsize = 'x-large')
+
     plt.tight_layout()
-    return plot
+    plt.show()
 
 def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False, cut_inductance:bool = False,**plot_args):
     '''
-    Plots Zreal and Zimag from a DTA file of potentiostatic EIS data taken from a Gamry potentiostat
+    Plots Zreal and Zimag from a DTA file of potentiostatic electrochemical impedance spectroscopy (PEIS) 
+    data taken from a Gamry potentiostat
 
     Parameters
     ----------
@@ -64,19 +63,10 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
     plot_args, dict:
         Any arguments that are passed to the plot function.
 
-    Return --> if False, the plot of the figure if True none but it plots the figure and shows it.
+    Return --> The figure. It also plots and shows one EIS spectra
     '''
-    
-    dta2csv(loc) #convert DTA to a CSV
-    loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
+    df = get_eis_data(loc) # Reads the .DTA file and saves the PEIS data as a dataframe
 
-    #find right amount of rows to skip
-    file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-    for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-        if row[0] == 'ZCURVE':
-            skip = file.line_num+1
-            break
-    df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1')
     df['ohm.1'] = df['ohm.1'].mul(-1*area)
     df['ohm'] = df['ohm'].mul(area)
     df_useful = df[['ohm','ohm.1']]
@@ -86,21 +76,15 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
 
     # Plotting
     if pro == False:
-        # plot = plt.figure()
-        # plt.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,color = '#21314D') # #21314D is the color of Mines Navy blue
-        # plt.xlabel('Zreal (\u03A9 cm$^2$)')
-        # plt.ylabel('-Zimag (\u03A9 cm$^2$)')
-        # plt.axhline(y=0, color='#D2492A', linestyle='-.') # #D2492A is the color of Mines orange
-        # plt.rc('font', size=16)
-        # plt.axis('scaled')
-
         fig, ax = plt.subplots()
 
         # -- Formatting
         ax.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,color = '#21314D',markersize = 10)
         ax.set_xlabel('Zreal (\u03A9 cm$^2$)', size = 'xx-large')
         ax.set_ylabel('-Zimag (\u03A9 cm$^2$)', size = 'xx-large')
-        ax.axhline(y=0, color='#D2492A', linestyle='-.') # #D2492A is the color of Mines orange
+        dashes = [6,2,2,2,6,2,2,4,6,2,6,4]
+        ax.axhline(y=0, color='#c1741d',dashes=dashes)
+        ax.margins(y=0.1)
         ax.axis('scaled') #Keeps X and Y axis scaled 1 to 1
 
         # - Excessive formatting
@@ -108,6 +92,7 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
         ax.spines['top'].set_visible(False)
         ax.tick_params(axis='both', which='major', labelsize='x-large')
         plt.tight_layout()
+        plt.show()
 
         return fig
 
@@ -125,6 +110,7 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
         ax.spines['top'].set_visible(False)
         ax.spines['left'].set_color(frame_color)
         ax.spines['right'].set_visible(False)
+        ax.margins(y=0.1)
         ax.tick_params(colors=frame_color, which='both')
 
         # --- Horizontal dashed line
@@ -154,6 +140,8 @@ def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False,
         plt.tight_layout() 
         plt.show()
 
+        return fig
+
 def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
                 legend_loc:str='best', cut_inductance:bool = False,**plot_args): #Enables multiple EIS spectra to be stacked on the same plot ,color=-1
     '''
@@ -179,18 +167,8 @@ def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
 
     Return --> none but it plots the figure
     '''
-    
-    dta2csv(loc) # convert DTA to a CSV
-    loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
-    
-    # - find right amount of rows to skip
-    file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-    for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-        if row[0] == 'ZCURVE':
-            skip = file.line_num+1
-            break
-    
-    df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1')
+    df = get_eis_data(loc) # Reads the .DTA file and saves the PEIS data as a dataframe
+
     df['ohm.1'] = df['ohm.1'].mul(-1*area)
     df['ohm'] = df['ohm'].mul(area)
     df_useful = df[['ohm','ohm.1']] #returns the useful information
@@ -205,7 +183,8 @@ def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
     plt.xlabel('Zreal (\u03A9 cm$^2$)',size=18) #\u00D7
     plt.ylabel('$\u2212$Zimag (\u03A9 cm$^2$)',size=18)
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.axhline(y=0,color='k', linestyle='-.') # plots line at 0 #D2492A is the color of Mines orange
+    dashes = [6,2,2,2,6,2,2,4,6,2,6,4]
+    plt.axhline(y=0, color='k',dashes=dashes)
     plt.axis('scaled') #Keeps X and Y axis scaled 1 to 1
     plt.locator_params(axis='y', nbins=3) # Sets the number of ytick labels but still has matplotlib place them
 
@@ -239,20 +218,10 @@ def plot_eis_ocvs(loc:str, label:str, ymin:float=1.00, ymax:float=1.10, ncol:int
 
     Return --> none but it plots the figure
     '''
-    dta2csv(loc) #convert DTA to a CSV
-    loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
-    #find right amount of rows to skip
-    file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-    for row in file: #searches first column of each row in csv for "OCVCURVE", then adds 1. This gives the right amount of rows to skip to get to the OCV table
-        if row[0] == 'OCVCURVE':
-            skip = file.line_num+1
-            break
-    for row in file: #searches for end of the OCV table
-        if row[0] == 'EOC':
-            nrows = file.line_num-skip-2
-            break
-    df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,nrows=nrows,encoding='latin1', error_bad_lines=False)
+    df = get_eis_ocv_data(loc) # Reads the .DTA file and saves the OCV data as a dataframe
+
     df_useful = df[['s','V vs. Ref.']] #returns the useful information
+    
     plt.plot(df_useful['s'],df_useful['V vs. Ref.'],'o',label=label)
     plt.xlabel('Time (s)')
     plt.ylabel('Voltage (V)')
@@ -276,16 +245,8 @@ def plot_ivfc(area:float, loc:str):
     Return --> none but it plots the figure and shows it    
     '''
     
-    dta2csv(loc) #Converts and finds CSV then turns it into a DataFrame
-    loc_csv = loc.replace('.DTA','')+'.csv'
-    file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here, but it works
-    
-    for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-        if row[0] == 'CURVE':
-            skip = file.line_num+1
-            break
-    df = pd.read_csv(loc_csv,sep='\t',skiprows=skip,encoding='latin1')
-    
+    df = get_iv_data(loc) # Reads the .DTA file and saves the IVFC data as a dataframe
+
     # -calculations and only keeping the useful data
     df['A'] = df['A'].div(-area)
     df['W'] = df['W'].div(-area)
@@ -304,22 +265,25 @@ def plot_ivfc(area:float, loc:str):
     
     # - Power density plotting
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-    color2 = '#D2492A' #orange color
+    color2 = '#D2492A' # Mines orange color
     ax2.set_ylabel('Power Density ($W/cm^2$)', color=color2, fontsize = 'xx-large')  # we already handled the x-label with ax1
     ax2.plot(df_useful['A'], df_useful['W'], 'o',color=color2) 
     ax2.tick_params(axis='y', labelcolor=color2, labelsize = 'x-large')
+    ax2.spines['top'].set_visible(False)
+    ax1.spines['top'].set_visible(False)
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     
     # - Calculating and printing max values onto the graph
     max_w = df_useful['W'].max() #finds maximum power density
     max_v = df.loc[df.index[df['W'] == max_w],'V'].item() #finds voltage of max power density
-    max_ws = f'{round(max_w,3)}' #setts float to a string
+    max_ws = f'{round(max_w,3)}' #sets float to a string
     max_vs = f'{round(max_v,3)}'
+
     plt.figtext(0.28,0.21,r'$P_{max} = $'+max_ws+r' $W/cm^2 at$ '+max_vs+r'$V$',size='x-large',weight='bold')
     
     plt.tight_layout()
     plt.show()
-    
+
 def plot_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
     '''
     Plots multiple IV and power density curves, input is a tuple of (area,condition,location of IV curve)
@@ -351,18 +315,9 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
         print(color_space)
 
     for iv in curves_conditions:
-        ' Extracting data from DTA file to a DataFrame'
         loc = iv[2]
-        print(loc)
-        dta2csv(loc) #Converts and finds CSV then turns it into a DataFrame
-        loc_csv = loc.replace('.DTA','')+'.csv'
-        file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here, but it works
-        
-        for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-            if row[0] == 'CURVE':
-                skip = file.line_num+1
-                break
-        df = pd.read_csv(loc_csv,sep='\t',skiprows=skip,encoding='latin1')
+        df = get_iv_data(loc) # Reads the .DTA file and saves the IVFC data as a dataframe
+
         #calculations and only keeping the useful data
         area = iv[0]
         df['A'] = df['A'].div(-area)
@@ -414,13 +369,14 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
     elif num_curves <=12:
         ncol = int(round(num_curves/3))
         ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+    
     plt.subplots_adjust(top=0.8)
     plt.tight_layout()
     plt.show()
 
-def plot_ivec(area:float, loc:str, CD_at_V:float = 1.5):
+def plot_ivec(area:float, loc:str, CD_at_V:float = 1.3):
     '''
-    Plots IV curve in EC mode and displays the current density at 1.5V on the plot
+    Plots IV curve in EC mode and displays the current density at a desired voltage on the plot
 
     Parameters
     ----------
@@ -428,20 +384,13 @@ def plot_ivec(area:float, loc:str, CD_at_V:float = 1.5):
         The active cell area in cm^2
     loc, string: 
         The location .DTA file that contains the IVEC curve
-    CD_at_V, float: (default is 1.5)
+    CD_at_V, float: (default is 1.3)
         Current Density at a certain voltage
 
     Return --> none but it plots the figure and shows it
     '''
     
-    dta2csv(loc) #Converts and finds CSV then turns it into a DataFrame
-    loc_csv = loc.replace('.DTA','')+'.csv'
-    file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here, but it works
-    for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-        if row[0] == 'CURVE':
-            skip = file.line_num+1
-            break
-    df = pd.read_csv(loc_csv,sep='\t',skiprows=skip,encoding='latin1')
+    df = get_iv_data(loc) # Reads the .DTA file and saves the IVEC data as a dataframe
 
     # ------- calculations and only keeping the useful data
     df['A'] = df['A'].div(area)
@@ -454,7 +403,8 @@ def plot_ivec(area:float, loc:str, CD_at_V:float = 1.5):
     color = '#21314D'
     ax1.set_xlabel('Current Density ($A/cm^2$)',fontsize = 'xx-large')
     ax1.set_ylabel('Voltage (V)',fontsize = 'xx-large')
-    if df_useful['V'].loc[0] <= 0: #this is put in because the Gamry 3000 and 5000 have different signs on the voltage of IVEC curve
+    
+    if df_useful['V'].loc[0] <= 0: # This is put in because the Gamry 3000 and 5000 have different signs on the voltage of IVEC curve
         sign = -1
     else:
         sign = 1
@@ -463,11 +413,11 @@ def plot_ivec(area:float, loc:str, CD_at_V:float = 1.5):
 
     # ------- Calculating and printing current density at a given voltage
     CD_at_mod = CD_at_V-0.01
-    current_density15 = -df_useful[abs(df_useful['V'])>=CD_at_mod].iloc[0,1] #finds the current density of the first Voltage value above the desired Voltage
-    V15 = df_useful[abs(df_useful['V'])>=CD_at_mod].iloc[0,0] #same as before but returns the exact voltage value
+    current_density15 = -df_useful[abs(df_useful['V'])>=CD_at_mod].iloc[0,1] # Finds the current density of the first Voltage value above the desired Voltage
+    V15 = df_useful[abs(df_useful['V'])>=CD_at_mod].iloc[0,0] # Same as before but returns the exact voltage value
     current_density15_string = f'{round(current_density15,3)}'
     V15_string = f'{round(V15,3)}'
-    plt.figtext(0.28,0.21,current_density15_string+r'$A/cm^2\:at$ '+V15_string+r'$V$',size='x-large',weight='bold') #placing value on graph
+    plt.figtext(0.28,0.21,current_density15_string+r' $A/cm^2\:at$ '+V15_string+r'$V$',size='x-large',weight='bold') #placing value on graph
     
     plt.tight_layout()
     plt.show()
@@ -489,14 +439,7 @@ def plot_ivecs(area:float,condition:str,loc:str):
     Return --> none but it plots the figure
     '''
     
-    dta2csv(loc) #Converts and finds CSV then turns it into a DataFrame
-    loc_csv = loc.replace('.DTA','')+'.csv'
-    file = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here, but it works
-    for row in file: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-        if row[0] == 'CURVE':
-            skip = file.line_num+1
-            break
-    df = pd.read_csv(loc_csv,sep='\t',skiprows=skip,encoding='latin1')
+    df = get_iv_data(loc) # Reads the .DTA file and saves the IVEC data as a dataframe
 
     # ------ calculations and only keeping the useful data
     df['A'] = df['A'].div(area)
@@ -593,16 +536,8 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
     
     for i in range(0,length,1):
         loc = os.path.join(folder_loc,sorted_useful_files[i]) # Creates a file path to the file of choice
-        dta2csv(loc) #convert DTA to a CSV
-        loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
-        data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-        
-        for row in data: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-            if row[0] == 'CURVE':
-                skip = data.line_num+1
-                break
+        df = get_iv_data(loc) # Reads the .DTA file and saves the galvanostatic data as a dataframe
 
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #create data frame for a file
         start_time = fl.get_timestamp(sorted_useful_files[i]).strftime("%s") #Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
@@ -744,16 +679,7 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
     length = len(useful_files) #gets length of sorted useful files
     
     for i in range(0,length,1):
-        dta2csv(useful_files[i]) #convert DTA to a CSV
-        loc_csv = useful_files[i].replace('.DTA','')+'.csv' #access newly made file
-        data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-        
-        for row in data: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-            if row[0] == 'CURVE':
-                skip = data.line_num+1
-                break
-        
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
+        df = get_iv_data(useful_files[i]) # Reads the .DTA file and saves the galvanostatic data as a dataframe
         start_time = fl.get_timestamp(useful_files[i]).strftime("%s") # Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
@@ -893,14 +819,8 @@ def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsi
     dfs = [] #Initializing list of dfs
     length = len(useful_files) #gets length of sorted useful files
     for i in range(0,length,1):
-        dta2csv(useful_files[i]) #convert DTA to a CSV
-        loc_csv = useful_files[i].replace('.DTA','')+'.csv' #access newly made file
-        data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-        for row in data: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-            if row[0] == 'CURVE':
-                skip = data.line_num+1
-                break
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #create data frame for a file
+        df = get_iv_data(useful_files[i]) # Reads the .DTA file and saves the galvanostatic data as a dataframe
+
         start_time = fl.get_timestamp(useful_files[i]).strftime("%s") #Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
@@ -1040,16 +960,18 @@ def plot_EC_galvanoStb(folder_loc:str,fit:bool=True,first_file = 'default', font
     length = len(useful_files) #gets length of sorted useful files
     
     for i in range(0,length,1):
-        dta2csv(useful_files[i]) #convert DTA to a CSV
-        loc_csv = useful_files[i].replace('.DTA','')+'.csv' #access newly made file
-        data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
+        df = get_iv_data(useful_files[i]) # Reads the .DTA file and saves the galvanostatic data as a dataframe
+
+        # dta2csv(useful_files[i]) #convert DTA to a CSV
+        # loc_csv = useful_files[i].replace('.DTA','')+'.csv' #access newly made file
+        # data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
         
-        for row in data: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-            if row[0] == 'CURVE':
-                skip = data.line_num+1
-                break
+        # for row in data: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
+        #     if row[0] == 'CURVE':
+        #         skip = data.line_num+1
+        #         break
         
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
+        # df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
         start_time = fl.get_timestamp(useful_files[i]).strftime("%s") # Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','V vs. Ref.']]
@@ -1187,20 +1109,16 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
     # >>>>>>>> extracting the useful information from the files and placing it into a DataFrame
     dfs = [] #Initializing list of dfs
     size = len(useful_files) #gets length of the useful files list
+
     for i in range(0,size,1):
         loc = os.path.join(folder_loc,useful_files[i]) #Creates a file path to the file of choice
-        dta2csv(loc) #convert DTA to a CSV
-        loc_csv = loc.replace('.DTA','')+'.csv' #access newly made file
-        data = csv.reader(open(loc_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-        for row in data: #searches first column of each row in csv for "ZCURVE", then adds 1. This gives the right amount of rows to skip
-            if row[0] == 'CURVE':
-                skip = data.line_num+1
-                break
-        df = pd.read_csv(loc_csv,sep= '\t',skiprows=skip,encoding='latin1') #create data frame for a file
+        df = get_iv_data(loc)
+
         start_time = fl.get_timestamp(loc).strftime("%s") #Find the start time of the file in s from epoch
         df['s'] = df['s'] + int(start_time)
         df_useful = df[['s','A','V vs. Ref.']]
         dfs.append(df_useful)
+
     cat_dfs = pd.concat(dfs)# (s) Combine all the DataFrames in the file folder
     cat_dfs['s'] = (cat_dfs['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
     cat_dfs['A'] = cat_dfs['A'].div(area)
@@ -1211,42 +1129,41 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
         for file in files:
             if (file.find('0bias.DTA')!=-1) and (file.find('OCV')!=-1):
                 ocv_path = os.path.join(folder_loc,file)
-        dta2csv(ocv_path) #convert DTA to a CSV
-        loc_ocv_csv = ocv_path.replace('.DTA','')+'.csv' #access newly made file
-        ocv_data = csv.reader(open(loc_ocv_csv, "r",encoding='latin1'), delimiter="\t") #I honestly dk what is going on here
-        skip = 0
-        for row in ocv_data: #searches first column of each row in csv for "CURVE", then adds 1. This gives the right amount of rows to skip
-            if row[0] == 'CURVE':
-                skip = ocv_data.line_num+1
-                break
-        df_ocv = pd.read_csv(loc_ocv_csv,sep= '\t',skiprows=skip,encoding='latin1') # create data frame for a file
+
+        df_ocv = get_ocv_data(ocv_path)
         avg_ocv = df_ocv['V'].mean()
 
         # --- Initializing FIgure
         fig,axs = plt.subplots(2)
 
         # --- Plotting Bias
-        axs[0].set_xlabel('Time (hrs)')
-        axs[0].set_ylabel('Voltage (V)')
+        axs[0].set_xlabel('Time (hrs)',size='xx-large')
+        axs[0].set_ylabel('Voltage (V)',size='xx-large')
         axs[0].plot(cat_dfs['s'],cat_dfs['V vs. Ref.'],'.k')
         axs[0].axhline(y=avg_ocv, color= 'r', linestyle='--')
+        axs[0].tick_params(axis='both', which='major', labelsize='x-large')
 
         # --- Plotting Current Density
-        axs[1].set_xlabel('Time (hrs)')
-        axs[1].set_ylabel('Current Density (A/cm$^2$)')
+        axs[1].set_xlabel('Time (hrs)',size='xx-large')
+        axs[1].set_ylabel('Current Density (A/cm$^2$)',size='xx-large')
         axs[1].plot(cat_dfs['s'],-cat_dfs['A'],'.k')
+        axs[1].tick_params(axis='both', which='major', labelsize='x-large')
+
 
         # --- Extras
         axs[1].axhline(y=0, color= 'r', linestyle='--') #Plots 0 Bias on the Current density chart
-        plt.figtext(0.15,0.45,'Fuel Cell',weight='bold')
-        plt.figtext(0.15,0.35,'Electrolysis',weight='bold')
+        plt.figtext(0.14,0.82,'Electrolysis',weight='bold',size='large')
+        plt.figtext(0.14,0.76,'Fuel Cell',weight='bold',size='large') # Voltage graph
+
+        plt.figtext(0.14,0.38,'Fuel Cell',weight='bold',size='large') # Current graph
+        plt.figtext(0.14,0.32,'Electrolysis',weight='bold',size='large')
         plt.tight_layout()
         plt.show()
         
     else:
         fig,ax = plt.subplots()
-        ax.set_xlabel('Time (hrs)')
-        ax.set_ylabel('Current Density (A/cm$^2$)')
+        ax.set_xlabel('Time (hrs)',size='xx-large')
+        ax.set_ylabel('Current Density (A/cm$^2$)',size='xx-large')
         ax.plot(cat_dfs['s'],-cat_dfs['A'],'.k')
         # --- Plot extras
         plt.axhline(y=0, color= 'r', linestyle='--')
@@ -1303,17 +1220,33 @@ def lnpo2(ohmic_asr:np.array,rp_asr:np.array,O2_conc:np.array):
         mo_str = f'{round(mo,2)}'
         plt.figtext(0.5,0.84,r'ASR$_\mathrm{O}$ Slope = '+mo_str,weight='bold')
         mr_str = f'{round(mr,2)}'
-        plt.figtext(0.5,0.15,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold')    
+        plt.figtext(0.5,0.15,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold')  
+
     elif ohmic_asr[0]>rp_asr[0]:
         mo_str = f'{round(mo,2)}'
         plt.figtext(0.5,0.15,r'ASR$_\mathrm{O}$ Slope = '+mo_str,weight='bold')
         mr_str = f'{round(mr,2)}'
         plt.figtext(0.5,0.84,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold')  
+
     plt.tight_layout()
     plt.show()
 
 def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
-    
+    '''
+    Plots the fuel cell and electrolysis cell galvanostatic holds on the same plot
+    This function is for cells that were stability tested in fuel cell and electrolysis cell mode
+
+    Parameters:
+    -----------
+    folder_loc, str:
+        Location of the folder where the cell testing data is stored
+    fit, bool: (Default = True)
+        Whether or not to do a linear fit of the data and plot it
+    fc_ocv, bool: (Default = True)
+        This is needed to get the initial ocv value of the cell
+
+    Return --> Nothing. This function will plot and show the data
+    '''
 
     ' //////////// ------- Organize & Plot FC data  ------- //////////// '
     files = os.listdir(folder_loc) # obtaining a list of the files in the desired folder
@@ -1444,6 +1377,11 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
                             + 'Fuel Cell Stability: ' + ms_fc + ' mV/khrs',weight='bold',size='x-large')
     plt.tight_layout()
     plt.show()
+
+
+
+
+
 
 
 
