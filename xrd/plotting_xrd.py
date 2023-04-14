@@ -65,7 +65,7 @@ def plot_xrd(loc: str,material: str):
     plt.tight_layout()
     plt.legend()
 
-def plot_xrds(loc: str, material: str, y_offset: float = 0,linewidth: float = 2.5, **plt_args):
+def plot_xrds(loc: str, material: str, y_offset: float = 0, linewidth: float = 2.5, **plt_args):
     '''
     This function enables multiple spectra to be on the same plot. This function graphs the XRD spectra from a CSV., while y_offset is the y offset and if left blank defaults to 0.
 
@@ -89,7 +89,7 @@ def plot_xrds(loc: str, material: str, y_offset: float = 0,linewidth: float = 2.
     
     with plt.rc_context({"axes.spines.right": False, "axes.spines.top": False}):
         plt.plot(df['a'],df['i']+y_offset, label = material,linewidth=linewidth,**plt_args) #offset is the y axis offset to stack graphs and is optional
-    
+
     # Formatting
     plt.xlabel('2\u03B8',size='xx-large')
     plt.ylabel('Relative Intensity',size='xx-large')
@@ -97,7 +97,6 @@ def plot_xrds(loc: str, material: str, y_offset: float = 0,linewidth: float = 2.
     
     ax = plt.gca()
     ax.axes.yaxis.set_ticks([])
-    # plt.yticks([0],fontsize = 'x-large')
 
     plt.tight_layout()
     plt.legend(fontsize='large')

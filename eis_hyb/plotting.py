@@ -178,8 +178,10 @@ def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
         legend_loc = 'outside'
 
     # ----- Plotting
-    with plt.rc_context({"axes.spines.right": False, "axes.spines.top": False}):
-        plt.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,label = condition) #plots data
+    # with plt.rc_context({"axes.spines.right": False, "axes.spines.top": False}):
+    #     plt.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,label = condition) #plots data
+    plt.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,label = condition) #plots data
+
     plt.xlabel('Zreal (\u03A9 cm$^2$)',size=18) #\u00D7
     plt.ylabel('$\u2212$Zimag (\u03A9 cm$^2$)',size=18)
     plt.tick_params(axis='both', which='major', labelsize=14)
@@ -518,7 +520,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
 
     # ------- Getting the first time
     for file in files: #Finding the first file
-        if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1:
+        if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1: # 'Deg__#1.DTA'
             file1 = os.path.join(folder_loc,file)
 
     if first_file == 'default': # if another file is specified as the first file, this file will be used to find T0

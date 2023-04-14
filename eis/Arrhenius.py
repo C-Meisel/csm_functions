@@ -172,32 +172,49 @@ def arrhenius_plots(folder_loc:str, jar:str, temps:list, area,plot_eis:bool = Tr
         fig_ohmic = plt.figure()
         plt.rc('font', size=14)
         ax1 = fig_ohmic.add_subplot(111)
-        ax2 = ax1.twiny()
-        new_tick_locations = tk_1000.values
+        axy2 = ax1.twiny()
         ax1.plot(tk_1000,ah_cond,'ko')
-        #Aligning the top axes tick marks with the bottom and converting to celcius
+
+        # - Aligning the top axes tick marks with the bottom and converting to celcius
         def tick_function(X):
             V = (1000/np.array(X))-273
             return ["%.0f" % z for z in V]
-        ax2.set_xticks(new_tick_locations)
-        ax2.set_xticklabels(tick_function(new_tick_locations))
-        #linear Fit:
+        axy2.set_xticks(tk_1000)
+        axy2.set_xticklabels(tick_function(tk_1000))
+
+        # - Creating and Aligning the right axes with the left axes:
+        axx2 = axy2.twinx()
+        def tick_function(X):
+            # V = (1000/np.array(X))-273
+            V = np.exp(np.array(X))/(273+np.array(temps))
+            return ["%.4f" % z for z in V]
+        axx2.set_yticks(ah_cond)
+        axx2.set_yticklabels(tick_function(ah_cond))
+
+    
+
+        # - linear Fit:
         m, b, r, p_value, std_err = scipy.stats.linregress(tk_1000, ah_cond)
         plt.plot(tk_1000, m*tk_1000+b,'r')
-        #creating and formatting table:
+
+        # - creating and formatting table:
         row_labels = ['Intercept','Slope','r squared']
         table_values = [[round(b,3)],[round(m,3)],[round(r**2,3)]]
-        table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower center',rowColours= ['lightblue','lightblue','lightblue'])
+        table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower center',rowColours= ['deepskyblue','deepskyblue','deepskyblue'])
         table.scale(1,1.6)
-        #Axis labels:
+
+        # - Axis labels:
         ax1.set_xlabel('1000/T (1/K)')
-        ax2.set_xlabel('Temperature (\u00B0C)')
-        ax1.set_ylabel('ln(\u03C3*T) (s*K/cm)')
-        #Calculating and printing activation energy
+        axy2.set_xlabel('Temperature (\u00B0C)')
+        ax1.set_ylabel('ln(\u03C3T) (sK/cm)')
+        axx2.set_ylabel('Conductivity (S/cm)')
+
+        # - Calculating and printing activation energy
         k = 8.617*10**-5 #boltzmanns constant in Ev/K
         Eact = round(m*k*(-1000),3) # this gives the activation energy in eV
         Eacts = f'{Eact}'
-        fig_ohmic.text(0.67,0.37,r'$E_a$ ='+Eacts+'eV')
+        fig_ohmic.text(0.33,0.33,r'$E_a$ ='+Eacts+'eV')
+
         plt.tight_layout()
 
     elif thickness == 0:
@@ -206,29 +223,35 @@ def arrhenius_plots(folder_loc:str, jar:str, temps:list, area,plot_eis:bool = Tr
         ax1 = fig_ohmic.add_subplot(111)
         ax2 = ax1.twiny()
         ax1.plot(tk_1000,ah_ohmic_asr,'ko')
-        #Aligning the top axes tick marks with the bottom and converting to celcius
+
+        # - Aligning the top axes tick marks with the bottom and converting to celcius
         def tick_function(X):
             V = (1000/X)-273
             return ["%.0f" % z for z in V]
         ax2.set_xticks(tk_1000)
         ax2.set_xticklabels(tick_function(tk_1000))
-        #linear Fit:
+
+        # - linear Fit:
         m, b, r, p_value, std_err = scipy.stats.linregress(tk_1000, ah_ohmic_asr)
         plt.plot(tk_1000, m*tk_1000+b,'r')
-        #creating and formatting table:
+
+        # - Creating and formatting table:
         row_labels = ['Intercept','Slope','r squared']
         table_values = [[round(b,3)],[round(m,3)],[round(r**2,3)]]
         table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower right',rowColours= ['lightblue','lightblue','lightblue'])
         table.scale(1,1.6)
-        #Axis labels:
+
+        # - Axis labels:
         ax1.set_xlabel('1000/T (1/K)')
         ax2.set_xlabel('Temperature (\u00B0C)')
         ax1.set_ylabel('ln(\u03A9$_\mathrm{ohmic} $cm$^2$/T) (\u03A9 cm$^2$/K)')
-        #Calculating and printing activation energy
+
+        # - Calculating and printing activation energy
         k = 8.617*10**-5 #boltzmanns constant in Ev/K
         Eact = round(m*k*(1000),3) # this gives the activation energy in eV
         Eacts = f'{Eact}'
         fig_ohmic.text(0.65,0.33,r'$E_a$ ='+Eacts+'eV')
+
         plt.tight_layout()
 
     ' --- Making the Polarizatation Resistance Arrhenius Plot --- '

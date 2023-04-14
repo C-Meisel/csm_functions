@@ -9,7 +9,7 @@ import csv
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-# from bayes_drt2 import file_load as fl
+from bayes_drt2 import file_load as fl
 import os
 from matplotlib.ticker import FormatStrFormatter
 

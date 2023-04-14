@@ -1426,6 +1426,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
                 inv = Inverter()
                 inv.load_fit_data(os.path.join(jar_loc,map_fit_name))
                 bp.plot_distribution(None,inv,ax,unit_scale='',label = label)
+
             ax.legend()
             plt.show()
         
@@ -1462,7 +1463,6 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
                 label = str(time) + ' Hours'
                 i = i+1
                 print(number,', ',map_fit_name, ', ', time, ', ',label)
-
 
                 # --- Plotting
                 inv = Inverter()
