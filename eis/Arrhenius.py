@@ -2,7 +2,7 @@
 This module contains functions to help format and plot Arrhenius data.
 The data is electrohchemical impedance spectroscopy (EIS) data obtained by a Gamry potentiostat. 
 The files are .DTA files and this module plots EIS and IV curves as well as fits and plots DRT using
-the Bayes-DRT package
+the Bayes-DRT package developed by Dr. Jake Huang
 # C-Meisel
 '''
 

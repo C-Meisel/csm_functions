@@ -139,10 +139,74 @@ def standard_performance(loc:str, jar:str, area:float=0.5, **peis_args):
     print('Standard Ohmic',round(ohmic,3),'\u03A9cm\u00b2')
     print('Standard Rp',round(rp,3),'\u03A9cm\u00b2')
 
+def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None, peaks_to_fit:int = 'best_id'):
+    '''
+    Quicker version to fit and plot a dual DRT spectra to EIS data.
+    This function supports multiple graphs stacked on each other
+    If one spectra is being plot, the fig and ax are made inside the function.
+
+    Parameters
+    ----------
+    loc, str: (path to a directory)
+        The location of the folder containing the EIS files (path to folder)
+    area, float:
+        The active cell area in cm^2
+    ax, plt.Axes:
+        matplotlib axes object. Used to plot the spectra. Needed to plot different spectra on the same figure
+    peaks_to_fit, str/int: (default: 'best_id')
+        Sets the number of discrete elements in the EIS to fit in the DRT
+        This basically just sets the amout of peaks to fit
+        if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
+        if this is set to a integer, it fit the number of peaks set by that integer
+    
+    Return --> None, but it plots and shows one or more plots
+    '''
+    # -- Gathering data
+    drt = DRT()
+    df = read_eis(loc)
+    freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+    drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+    tau = drt.get_tau_eval(20)
+
+
+    # -- Selecting the number of peaks for the drt distribution to have.
+    if peaks_to_fit == 'best_id':
+        best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+        peaks = best_id
+
+    else: peaks = peaks_to_fit
+
+    # - Selecting the model. The number of peaks to plot and fit
+    model_dict = drt.get_candidate(peaks,'discrete')
+    model = model_dict['model']
+    
+    # --- Plotting
+    solo = None 
+    if ax == None: # If only one spectra is being plot, create the fig and axis in the function
+        solo = True
+        fig, ax = plt.subplots()
+
+
+    model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
+
+    # - Formatting
+    ax.legend(fontsize='x-large')
+    ax.xaxis.label.set_size('xx-large') 
+    ax.yaxis.label.set_size('xx-large')
+    ax.tick_params(axis='both', labelsize='x-large')
+
+    # - Excessive formatting
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    if solo == True:
+        plt.tight_layout()
+        plt.show()
+
 def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=True,
                  o2_dependence:bool=True, drt_peaks:bool=True, print_resistance_values:bool=False,
                   ncol:int=1, legend_loc:str='best', flow100:bool = False, cut_inductance:bool = False,
-                  overwrite = True, peaks_to_fit = 'best_id'):
+                  overwrite:bool = False, peaks_to_fit:int = 'best_id'):
     '''
     Searches through the folder_loc for all the changes in O2 concentration EIS files.
     Plots the EIS for each concentration in one plot if eis=True and the DRT of each concentration in another if drt=True
@@ -248,6 +312,9 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
             df = read_eis(loc)
             freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
             drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+            label = po2+ '% O$_2$'
+
+            # drt.plot_distribution(mark_peaks=True, label=label, ax=ax, area=area)
             tau = drt.get_tau_eval(20)
 
             # - Selecting the number of peaks for the drt distribution to have.
@@ -277,7 +344,7 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
 
             # - Obtaining the resistance value for each peak
             r_list = []
-            for i in range(1,peaks+1):
+            for i in range(1,int(peaks)+1):
                 peak = 'R_HN'+str(i)
                 resistance = model.parameter_dict[peak]
                 r_list.append(resistance)
@@ -322,13 +389,13 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         elif exists == True and overwrite == True:
             df_po2 = pd.DataFrame(list(zip(O2_conc*100,ohmic_asr,rp_asr)),
                 columns =['O2 Concentration (%)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
+            
             book = load_workbook(excel_file)
             writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
             df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
             writer.close() # Close the Pandas Excel writer and output the Excel file.
 
             df_po2 = pd.read_excel(excel_file,sheet_name)
-
 
         # ------- Appending the Peak_fit data to an excel file
         excel_name = '_' + cell_name + '_Data.xlsx'
@@ -379,7 +446,8 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
 
 def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=True,
                  o2_dependence:bool=True, drt_peaks:bool=True, print_resistance_values:bool=False,
-                  ncol:int=1, legend_loc:str='best', flow100:bool = False, cut_inductance:bool = False):
+                  ncol:int=1, legend_loc:str='best', flow100:bool = False, cut_inductance:bool = False,
+                  overwrite = False):
     '''
     Searches through the folder_loc for all the changes in O2 concentration EIS files.
     PFRT-fits all of hte eis files and saves them to fit_path. If the files are already fit, they will not be re-fit.
@@ -417,6 +485,9 @@ def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         This just changes the list of strings to look for
     cut_inductance, bool: (default = False)
         If this is set to true, the negative inductance values at the beginning of the DataFrame
+    overwrite, bool: (default = False)
+        If the data already exists in the cell excel file, then this will overwrite that data with
+        the data currently being fit when overwrite=True.
         
     Return --> None, but it plots and shows one or more plots
     '''
@@ -474,6 +545,7 @@ def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
     ' ---------- Plotting all the PO2 concentration EIS spectra'
     if drt == True: 
         fig, ax = plt.subplots() #initializing plots for DRT
+
         # --- Initializing lists for LnPO2
         O2_conc = np.array([]) # Concentration of Oxygen
         ohmic_asr = np.array([]) # ohm*cm^2
@@ -522,19 +594,28 @@ def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'
         excel_name = '_' + cell_name + '_Data.xlsx'
         excel_file = os.path.join(folder_loc,excel_name)
-        sheet_name = 'pO2'
+        sheet_name = 'pO2_pfrt'
         exists = False
 
-        exists, writer = excel_datasheet_exists(excel_file,peak_data_sheet)
-        
-        elif os.path.exists(excel_file)==False:
-            writer = pd.ExcelWriter(excel_file,engine='xlsxwriter') #Creates a Pandas Excel writer using XlsxWriter as the engine. This will make a new excel file
+        exists, writer = excel_datasheet_exists(excel_file,sheet_name)
 
         if exists == False:
             df_po2 = pd.DataFrame(list(zip(O2_conc*100,ohmic_asr,rp_asr)),
                 columns =['O2 Concentration (%)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
             df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
             writer.close() # Close the Pandas Excel writer and output the Excel file.
+
+        elif exists == True and overwrite == True:
+            df_po2 = pd.DataFrame(list(zip(O2_conc*100,ohmic_asr,rp_asr)),
+                columns =['O2 Concentration (%)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
+            
+            book = load_workbook(excel_file)
+            writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
+            writer.close() # Close the Pandas Excel writer and output the Excel file.
+
+            df_po2 = pd.read_excel(excel_file,sheet_name)
+
 
     ' ------ Plotting the Oxygen dependence'
     if o2_dependence == True:
@@ -544,21 +625,21 @@ def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
 
     ' --- DRT peak fitting and plotting --- '
     if drt_peaks == True:
-        o2_map_fits = [file for file in os.listdir(fit_path) if file.find('pO2')!=-1] # gets all fuel cell map fits
+        o2_map_fits = [file for file in os.listdir(fit_path) if file.find('pO2')!=-1 and file.find('pfrt')!=-1] # gets all fuel cell map fits
         o2_map_fits = natsort.humansorted(o2_map_fits,key=lambda y: (len(y),y)) #sorts by bias
         
         # --- Checking to see if the peaks have already been fit:
         peak_data = False
         excel_name = '_' + cell_name + '_Data.xlsx'
         excel_file = os.path.join(folder_loc,excel_name)
-        peak_data_sheet = 'pO2 DRT peak fits'
+        peak_data_sheet = 'pO2_PFRT_DRT_peak_fits'
 
         exists_peaks, writer_peaks = excel_datasheet_exists(excel_file,peak_data_sheet)
         
         if exists_peaks == False: # Make the excel data list
             # --- Fitting peaks and appending to a DataFrame
             df_tau_r = pd.DataFrame(columns = ['O2 Concentration (%)','Tau','Resistance']) #Initializing DataFrame to save temperature
-            print(o2_map_fits)
+
             for fit in o2_map_fits: #Loading DRT, fitting peaks, and saving to a DataFrame
                 # creating DRT object and loading fits
                 drt = DRT()
@@ -581,7 +662,37 @@ def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
             df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
             writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
 
-        elif exists == True: #load the data into a DataFrame
+        elif exists == True and overwrite == False: #load the data into a DataFrame
+            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+
+        elif exists_peaks == True and overwrite == True:
+            # --- Fitting peaks and appending to a DataFrame
+            df_tau_r = pd.DataFrame(columns = ['O2 Concentration (%)','Tau','Resistance']) #Initializing DataFrame to save temperature
+
+            for fit in o2_map_fits: #Loading DRT, fitting peaks, and saving to a DataFrame
+                # creating DRT object and loading fits
+                drt = DRT()
+                drt.load_attributes(os.path.join(fit_path,fit))
+
+
+                # --- obtain time constants from inverters
+                tau = drt.find_peaks() # τ/s
+                r = np.array(drt.quantify_peaks()) * area # Ω*cm2
+
+                # --- Obtaining pO2
+                o2_conc = int(fit[fit.find(cell_name+'_')+len(cell_name+'_'):fit.rfind('pO2')])
+
+                # Appending tau and r for each peak into df_tau_r
+                i = 0
+                for τ in tau:
+                    df_tau_r.loc[len(df_tau_r.index)] = [o2_conc, τ, r[i]]
+                    i = i+1
+            
+            book = load_workbook(excel_file)
+            writer_peaks = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+            df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
+            writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
+
             df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
         
         # ----- plotting
@@ -795,6 +906,8 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
     #     plt.tight_layout()
     #     plt.show()
 
+
+
 def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array = None,
                         rmv_concs_r:np.array = None, rmv_concs_l:np.array = None,plot_all=False):
     '''
@@ -967,7 +1080,160 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
 
     return(mr)
 
+def o2_pfrt_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array = None,
+                        rmv_concs_r:np.array = None, rmv_concs_l:np.array = None):
+    '''
+    This function is meant to linearly fit a single DRT peak across an oxygen concentration range
+    This function can only be used after the po2_plots function
+    This function plots ln(1/asr) vs. ln(O2 concentration (%))
 
+    Parameters
+    ----------
+    folder_loc, str: (path to a directory)
+        The location of the directory containing the EIS files.
+    tau_low, float:
+        The lower bound of the time constant range to fit.
+    tau_high, float:
+        The upper bound of the time constant range to fit.
+    concs, np.array: (default = None)
+        The concentrations that the DRT peaks are taken at. if this is none all temperature ranges in
+        the cell data sheet will be fit.
+    rmv_concs_r, np.array: (default = None)
+        If two clusters overlap, specify the concentrations where there are overlap and this will remove
+        the peaks with higher time constants (lower frequency, to the right) from the fit.
+    rmv_concs_l, np.array: (default = None)
+        If two clusters overlap, specify the concentrations where there are overlap and this will remove
+        the peaks with lower time constants (higher frequency, to the left) from the fit.
+
+    Returns --> The slope of ln(1/asr)/ln(O2%), and a plot of the DRT peak fit and the activation energy is calculated and printed on the plot
+    '''
+
+    # ----- Sorting out the points from a specific time constant
+    for file in os.listdir(folder_loc):
+        if file.endswith('Data.xlsx'):
+            data_file = os.path.join(folder_loc,file)
+            break
+    
+    data = pd.read_excel(data_file,'pO2_PFRT_DRT_peak_fits')
+    data = data[(data['Tau']>tau_low) & (data['Tau']<tau_high)]
+
+    # ----- If desired, only plotting certain temperatures
+    if concs is not None:
+        data = data[data['O2 Concentration (%)'].isin(concs)]
+
+    # ----- removing a duplicate if there is overlap between clusters to the right (remove points to the right)
+    if rmv_concs_r is not None:
+        for conc in rmv_concs_r:
+            # - find the lowest tau for a given temperature
+            conc_data = data[data['O2 Concentration (%)']==conc]
+            conc_data = conc_data.sort_values(by='Tau')
+
+            try:
+                highest_tau = conc_data.iloc[-1]['Tau']
+
+            except IndexError as error:
+                traceback.print_exc()
+                print('The removed concentration must be in concs array (aka concentrations plotted)')
+                print('Check the concs array and the rmv_concs array')
+                print('If that does not work, make sure that there are data points in the specified tau range (it is easy to confuse the log scale)')
+                sys.exit(1)
+
+            # - remove all higher tau values
+            data = data[data['Tau']!=highest_tau]
+
+    # ----- removing a duplicate if there is overlap between clusters to the left (remove points to the left)
+    if rmv_concs_l is not None:
+        for conc in rmv_concs_l:
+            # - find the lowest tau for a given temperature
+            conc_data = data[data['O2 Concentration (%)']==conc]
+            conc_data = conc_data.sort_values(by='Tau')
+
+            try:
+                lowest_tau = conc_data.iloc[0]['Tau']
+
+            except IndexError as error:
+                traceback.print_exc()
+                print('The removed concentration must be in concs array (aka concentrations plotted)')
+                print('Check the concs array and the rmv_concs array')
+                print('If that does not work, make sure that there are data points in the specified tau range (it is easy to confuse the log scale)')
+                sys.exit(1)
+
+            # - remove all higher tau values
+            data = data[data['Tau']!=lowest_tau]
+    
+    # ----- Finding low and high Tau values of the values plotted
+    min_tau = data['Tau'].min()
+    max_tau = data['Tau'].max()
+
+    # ----- Formatting data for plotting
+    rp_asr = data['Resistance'].values
+    concs = data['O2 Concentration (%)'].values
+    ln_rp_asr = np.log(1/rp_asr)
+    
+    o2_concs = np.array(concs)
+    ln_o2 = np.log(o2_concs/100)
+
+    # ----- Plotting
+    x = ln_o2
+    y = ln_rp_asr
+
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twiny()
+    ax1.plot(x,y,'ko')
+
+    # - Setting font sizes
+    label_fontsize = 'x-large'
+    tick_fontsize = 'large'
+    text_fontsize = 'x-large'
+
+    # - Setting ticks
+    ax1.set_xticks(x, np.round(x,2), fontsize=tick_fontsize)
+    ax1.set_yticks(y,labels= np.round(y,2), fontsize=tick_fontsize)
+    ax2.set_xticks(x, labels = concs, fontsize=tick_fontsize)
+    ax1.set_xlim(-1.7,0.1)
+    ax2.set_xlim(-1.7,0.1)
+
+    # - linear Fit:
+    mr,br = np.polyfit(ln_o2,ln_rp_asr,1)
+    mr,br, r, p_value, std_err = scipy.stats.linregress(x, y)
+    fit_r = mr*ln_o2 + br
+    ax1.plot(x, fit_r,'g')
+
+    # - Axis labels:
+    ax1.set_xlabel('ln(O$_2$) (%)',fontsize=label_fontsize)
+    ax2.set_xlabel('Oxygen Concentration (%)',fontsize=label_fontsize)
+    ax1.set_ylabel('ln(1/ASR) (S/cm$^2$)',fontsize=label_fontsize)
+
+    # - Creating table:
+    row_labels = ['r squared']
+    slopes = f'{round(mr,2)}'
+    table_values = [[round(r**2,3)]] # $\\bf{round(mr,2)}$
+    color = 'palegreen'
+
+    if mr >= 0:
+        table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower right',
+            rowColours= [color,color])
+    else:
+        table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower center',
+            rowColours= [color,color])
+
+    table.scale(1,1.6)
+    
+    # - Printing figure text
+    mr_str = f'{round(mr,2)}'
+    tau_lows = f'{min_tau:.2e}'
+    tau_highs = f'{max_tau:.2e}'
+    if mr >=0:
+        fig.text(0.68,0.22,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold',fontsize = tick_fontsize)
+        fig.text(0.17,0.81,'DRT peak between '+tau_lows+'(\u03C4/s) and '+tau_highs+'(\u03C4/s)',fontsize = tick_fontsize)
+    else:
+        fig.text(0.37,0.22,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold',fontsize = tick_fontsize)
+        fig.text(0.38,0.81,'DRT peak between '+tau_lows+'(\u03C4/s) and '+tau_highs+'(\u03C4/s)',fontsize = tick_fontsize)
+    plt.tight_layout()
+
+    plt.show()
+
+    return(mr)
 
 def excel_datasheet_exists(excel_file:str,sheet_name:str):
     '''

@@ -314,7 +314,7 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
         color_space = np.linspace(0,1,len(curves_conditions)) # array from 0-1 for the colormap for plotting
         c = 0 # index of the color array
         cmap = cmap
-        print(color_space)
+        # print(color_space)
 
     for iv in curves_conditions:
         loc = iv[2]
@@ -385,7 +385,7 @@ def plot_ivec(area:float, loc:str, CD_at_V:float = 1.3):
     area, float: 
         The active cell area in cm^2
     loc, string: 
-        The location .DTA file that contains the IVEC curve
+        The location of the .DTA file that contains the IVEC curve
     CD_at_V, float: (default is 1.3)
         Current Density at a certain voltage
 
@@ -1380,11 +1380,236 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
     plt.tight_layout()
     plt.show()
 
+def curtin_echem_plotting(loc:str, area:float = None, CD_at_V:float = 1.3, time_step:int = None):
+    '''
+    Plots data gathered using the labview testing software developed by Prof. Shao at Curtin university
+    The data is gathered using a Kiethley
 
+    Parameters
+    ----------
+    loc, string: 
+        The location of the file that contains the electrochemical data
+    area, float: 
+        The active cell area in cm^2
+    CD_at_V, float: (default is 1.3)
+        This function prints the current density at a specific voltage onto the IVEC plot
+        This parameter sets the specific voltage to print the current at (i.e the current at 1.3V)
+    time_step, int: (default = None)
+        Sets the time step in seconds between measurments for the OCV plot
+        If this was variable throughout testing set to None
 
+    Return --> none but it plots the figure and shows it
+    '''
+    
+    df = pd.read_csv(loc,sep='\t',encoding='latin1',engine='python') # - Making a dataframe with the data
 
+    # --- Figuring out which test was run
+    file = os.path.basename(loc)
 
+    if file.find('IV')!=-1 and file.find('FC')!=-1:
+        test = 'ivfc'
+    elif file.find('IV')!=-1 and file.find('EC')!=-1:
+        test = 'ivec'
+    elif file.find('OCV')!=-1:
+        test = 'ocv'
 
+    if test == 'ivfc': # >>> Plotting a fuel cell mode power curve
+        # - Modifying the dataframe
+        df.columns = ['A','V']
 
+        # - Setting area specifit data
+        if area == None:
+            area = 0.5
+        else:
+            area = area
+
+        df['A'] = df['A'].div(area * 1000) # A/cm^2
+        df['W'] = (df['A'] * df['V']) # W/cm^2
+
+        # ------ Plotting
+        fig, ax1 = plt.subplots()
+   
+        # - IV plotting
+        color = '#000000' #Black color
+        ax1.set_xlabel('Current Density ($A/cm^2$)',fontsize = 'xx-large')
+        ax1.set_ylabel('Voltage (V)', color=color, fontsize = 'xx-large')
+        ax1.plot(df['A'], df['V'],'o', color=color)
+        ax1.tick_params(axis='y', labelcolor=color,labelsize = 'x-large')
+        ax1.tick_params(axis='x',labelsize = 'x-large')
+        
+        # - Power density plotting
+        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        color2 = '#c79d22' # Curtin gold color #CC9900 Curtin web safe gold color
+        ax2.set_ylabel('Power Density ($W/cm^2$)', color=color2, fontsize = 'xx-large')  # we already handled the x-label with ax1
+        ax2.plot(df['A'], df['W'], 'o',color=color2) 
+        ax2.tick_params(axis='y', color=color2, labelcolor=color2, labelsize = 'x-large')
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_color(color2)
+        ax1.spines['top'].set_visible(False)
+        fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        
+        # - Calculating and printing max values onto the graph
+        max_w = df['W'].max() #finds maximum power density
+        max_v = df.loc[df.index[df['W'] == max_w],'V'].item() #finds voltage of max power density
+        max_ws = f'{round(max_w,3)}' #sets float to a string
+        max_vs = f'{round(max_v,3)}'
+
+        plt.figtext(0.28,0.21,r'$P_{max} = $'+max_ws+r' $W/cm^2 at$ '+max_vs+r'$V$',size='x-large',weight='bold')
+        
+        plt.tight_layout()
+        plt.show()
+
+    elif test == 'ivec': # >>> Plotting an electrolysis cell mode power curve
+        # ---- Modifying the dataframe
+        df.columns = ['A','V']
+
+        # - Setting area specifit data
+        if area == None:
+            area = 0.5
+        else:
+            area = area
+
+        # - calculating the area specific current
+        df.columns = ['A','V']
+        df['A'] = df['A'].div(area * 1000)
+
+        # ----- Plotting
+        fig, ax1 = plt.subplots()
+
+        # - Formatting
+        color = '#c79d22'
+        ax1.set_xlabel('Current Density ($A/cm^2$)',fontsize = 'xx-large')
+        ax1.set_ylabel('Voltage (V)',fontsize = 'xx-large')
+        
+        ax1.plot(-df['A'], df['V'],'o', color=color)
+        ax1.tick_params(axis='both',labelsize = 'x-large')
+
+        # ------- Calculating and printing current density at a given voltage
+        CD_at_mod = CD_at_V-0.01
+        current_density15 = df[abs(df['V'])>=CD_at_mod].iloc[0,0] # Finds the current density of the first Voltage value above the desired Voltage
+        V15 = df[abs(df['V'])>=CD_at_mod].iloc[0,1] # Same as before but returns the exact voltage value
+        current_density15_string = f'{round(current_density15,3)}'
+        V15_string = f'{round(V15,3)}'
+        plt.figtext(0.28,0.21,current_density15_string+r' $A/cm^2\:at$ '+V15_string+r'$V$',size='x-large',weight='bold') #placing value on graph
+        
+        plt.tight_layout()
+        plt.show()
+
+    elif test == 'ocv': # >>> Plotting an electrolysis cell mode power curve
+        df.columns = ['A','V']
+
+        # --- Plotting
+        fig, ax = plt.subplots()
+        if time_step == None:
+            ax.plot(df.index.values,df['V'],'ko')
+            ax.set_xlabel('Measurement (#)',fontsize='xx-large')
+
+        else:
+            x = df.index.values * time_step
+            ax.plot(x, df['V'],'ko')
+            ax.set_xlabel('Time (s)',fontsize='xx-large')
+
+        # - Formatting
+        ax.set_ylabel('Voltage (V)',fontsize='xx-large')
+        ax.tick_params('both',labelsize = 'x-large')
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        plt.tight_layout()
+        plt.show()
+
+    return()
+
+def curtin_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
+    '''
+    Plots data gathered using the labview testing software developed by Prof. Shao at Curtin university
+    The data is gathered using a Kiethley
+    Plots multiple IV and power density curves, input is a tuple of (area,condition,location of IV curve)
+
+    Parameters
+    ----------
+    curves_conditions,tuple: 
+        A tuple containing data to plot and label the curve.
+        The order is: (area,condition,location of IV curve)
+    print_Wmax, bool: (default is True)
+        Prints out Wmax in the terminal
+    cmap,str: (default is None)
+        If a colormap is defined here it will be used for the plots
+
+    Return --> none but it plots the figure and shows it
+    '''
+    fig,ax1 = plt.subplots() # Initializing plot
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    w_max = [] #initializing a list to store the max power densities
+
+    # --- Setting up colormap if a colormap is chosen
+    if cmap is not None:
+        # --- Setting up an array for the color map
+        color_space = np.linspace(0,1,len(curves_conditions)) # array from 0-1 for the colormap for plotting
+        c = 0 # index of the color array
+        cmap = cmap
+
+    for iv in curves_conditions:
+        # - Gathering data
+        loc = iv[2]
+        df = pd.read_csv(loc,sep='\t',encoding='latin1',engine='python') # - Making a dataframe with the data
+        df.columns = ['A','V']
+
+        # - Calculations
+        area = iv[0]
+        df['A'] = df['A'].div(area * 1000) # A/cm^2
+        df['W'] = (df['A'] * df['V']) # W/cm^2
+
+        if print_Wmax == True:
+            w_max.append(df['W'].max()) #finds maximum power density
+
+        if cmap == None: # This if statement determines whether the default colors or a cmap is used
+            # --- IV plotting:
+            label = iv[1]
+            ax1.plot(df['A'], df['V'],'o',fillstyle='none',label=label)
+
+            # --- Power Density plotting
+            ax2.plot(df['A'], df['W'],'o',label=label)
+        else:
+            # --- IV plotting:
+            color = cmap(color_space[c])
+            label = iv[1]
+            ax1.plot(df['A'], df['V'],'o',fillstyle='none',label=label,color=color)
+
+            # --- Power Density plotting
+            ax2.plot(df['A'], df['W'],'o',label=label,color=color)
+            c = c+1
+
+    # --- Printing Max power density if desired:
+    if print_Wmax == True:
+        for i in range(len(w_max)):
+            max_ws = f'{round(w_max[i],3)}'
+            print('Max Power Density of the ' + curves_conditions[i][1] + ' condition' + ' is: '
+                +'\033[1m'+ max_ws + '\033[0m'+' W/cm\u00b2')
+
+    # ----- Plot Formatting:
+    ax1.set_xlabel('Current Density (A/cm$^2$)',fontsize='xx-large')
+    ax1.set_ylabel('Voltage (V)',fontsize='xx-large')
+    ax1.tick_params(axis='both', which='major', labelsize='x-large')
+
+    ax2.set_ylabel('Power Density (W/cm$^2$)',fontsize='xx-large')  # we already handled the x-label with ax1
+    ax2.tick_params(axis='both', which='major', labelsize='x-large')
+
+    # --- Legend Formatting
+    num_curves = len(curves_conditions)
+    if num_curves <=4:
+        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+    elif num_curves <=8:
+        ncol = int(round(num_curves/2))
+        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=ncol,handletextpad=0.02,columnspacing=1)
+    elif num_curves <=12:
+        ncol = int(round(num_curves/3))
+        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+    
+    plt.subplots_adjust(top=0.8)
+    plt.tight_layout()
+    plt.show()
 
 
