@@ -28,7 +28,7 @@ from .fit_drt import dual_drt_save, pfrt_drt_save
 from .data_formatting import peis_data
 
 
-def standard_performance(loc:str, jar:str, area:float=0.5, **peis_args):
+def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'best_id', **peis_args):
     '''
     Plots the EIS, dual-fits and plots the DRT, and prints the ohmic and polarization resistance for a cell
     Generally this function is used on the first EIS spectra taken at standard testing conditions
@@ -43,6 +43,11 @@ def standard_performance(loc:str, jar:str, area:float=0.5, **peis_args):
         The active cell area in cm^2 (default = 0.5)
     peis_args, dict: 
         Any additional arguments to be passed to the plot_peis function
+    peaks_to_fit, str/int: (default: 'best_id')
+        Sets the number of discrete elements in the EIS to fit in the DRT
+        This basically just sets the amout of peaks to fit
+        if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
+        if this is set to a integer, it fit the number of peaks set by that integer
 
     Return --> None, but it plots EIS and DRT. It also prints the ohmic and rp values of the cell
     '''
@@ -68,8 +73,18 @@ def standard_performance(loc:str, jar:str, area:float=0.5, **peis_args):
     df = read_eis(loc)
     freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
     dual_drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+    tau = dual_drt.get_tau_eval(20)
 
-    best_id = dual_drt.get_best_candidate_id('discrete', criterion='lml-bic')
+    # - Best Model to use to dual fit the DRT peaks:
+    if peaks_to_fit == 'best_id': 
+        best_id = dual_drt.get_best_candidate_id('discrete', criterion='lml-bic')
+        peaks = best_id
+
+    else: peaks = peaks_to_fit
+
+    # - Setting the Dual Model    
+    model_dict = dual_drt.get_candidate(peaks,'discrete')
+    model = model_dict['model']
 
     # - Probability function of relaxation time fit check
     pfrt_pickle_name = 0
@@ -99,8 +114,10 @@ def standard_performance(loc:str, jar:str, area:float=0.5, **peis_args):
     m_orange = '#c1741d'
     
     # dual_drt.plot_distribution(c=m_blue, plot_ci=True, label='Dual DRT', return_line=True, ax=ax, area=area, mark_peaks = True)
-    dual_drt.plot_candidate_distribution(best_id, 'discrete', label='Dual DRT',
-                c=m_blue, ax=ax, area=area)
+    # dual_drt.plot_candidate_distribution(best_id, 'discrete', label='Dual DRT',
+    #             c=m_blue, ax=ax, area=area)
+
+    model.plot_distribution(tau, ax=ax, area=area,label='Dual DRT', c=m_blue, mark_peaks=True)
 
     ax2 = ax.twinx()
     ax2.plot(pfrt_basis_tau, pf, label='PFRT', color=m_orange)
@@ -185,7 +202,6 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
     if ax == None: # If only one spectra is being plot, create the fig and axis in the function
         solo = True
         fig, ax = plt.subplots()
-
 
     model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
 

@@ -249,6 +249,10 @@ def plot_ivfc(area:float, loc:str):
     
     df = get_iv_data(loc) # Reads the .DTA file and saves the IVFC data as a dataframe
 
+    # dt = df['s'].iloc[-1]-df['s'].iloc[0]
+    # da = df['A'].iloc[-1]-df['A'].iloc[0]
+    # print(sweep_rate)
+
     # -calculations and only keeping the useful data
     df['A'] = df['A'].div(-area)
     df['W'] = df['W'].div(-area)
@@ -1553,14 +1557,25 @@ def curtin_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
 
     for iv in curves_conditions:
         # - Gathering data
-        loc = iv[2]
-        df = pd.read_csv(loc,sep='\t',encoding='latin1',engine='python') # - Making a dataframe with the data
-        df.columns = ['A','V']
+        try:
+            loc = iv[2]
+            df = pd.read_csv(loc,sep='\t',encoding='latin1',engine='python') # - Making a dataframe with the data
+            df.columns = ['A','V']
 
-        # - Calculations
-        area = iv[0]
-        df['A'] = df['A'].div(area * 1000) # A/cm^2
-        df['W'] = (df['A'] * df['V']) # W/cm^2
+            # - Calculations
+            area = iv[0]
+            df['A'] = df['A'].div(area * 1000) # A/cm^2
+            df['W'] = (df['A'] * df['V']) # W/cm^2
+        
+        except:
+            loc = iv[2]
+            df = get_iv_data(loc) # Reads the .DTA file and saves the IVFC data as a dataframe
+
+            #calculations and only keeping the useful data
+            area = iv[0]
+            df['A'] = df['A'].div(-area)
+            df['W'] = df['W'].div(-area)
+            df = df[['V','A','W']]
 
         if print_Wmax == True:
             w_max.append(df['W'].max()) #finds maximum power density
