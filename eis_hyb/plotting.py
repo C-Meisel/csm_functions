@@ -1627,4 +1627,43 @@ def curtin_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
     plt.tight_layout()
     plt.show()
 
+def curtin_ivecs(loc:str, area:float = None, label:str = None):
 
+    # ------ calculations and only keeping the useful data
+    try:
+        df = get_iv_data(loc) # Reads the .DTA file and saves the IVEC data as a dataframe
+        df['A'] = df['A'].div(area)
+        df = df[['V','A']]
+        if df['V'].loc[0] <= 0: #this is put in because the Gamry 3000 and 5000 have different signs on the voltage of IVEC curve
+            sign = -1
+        else:
+            sign = 1
+
+        asign = 1
+    except:
+        df = pd.read_csv(loc,sep='\t',encoding='latin1',engine='python') # - Making a dataframe with the data
+        # ---- Modifying the dataframe
+        df.columns = ['A','V']
+
+        # - Setting area specifit data
+        if area == None:
+            area = 0.5
+        else:
+            area = area
+
+        # - calculating the area specific current
+        df.columns = ['A','V']
+        df['A'] = df['A'].div(area * 1000)
+        sign=1
+        asign = -1
+
+
+    # ------- Plotting
+    with plt.rc_context({"axes.spines.right": False, "axes.spines.top": False}):
+        plt.plot(df['A']*asign, sign*df['V'],'o', label=label,markersize=9)
+    plt.xlabel('Current Density ($A/cm^2$)', fontsize='xx-large')
+    plt.ylabel('Voltage (V)', fontsize='xx-large')
+    plt.legend(loc='best', fontsize = 'x-large')
+    plt.xticks(fontsize = 'x-large')
+    plt.yticks(fontsize = 'x-large')
+    plt.tight_layout()

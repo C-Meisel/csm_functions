@@ -24,7 +24,7 @@ from .fit_drt import map_drt_save
 from .plotting import plot_peiss, plot_ivfcs
 from .convenience import excel_datasheet_exists
 
-def arrhenius_plots(folder_loc:str, jar:str, temps:list, area,plot_eis:bool = True, plot_drt:bool = True,
+def arrhenius_plots(folder_loc:str, jar:str, temps:list, area:float, plot_eis:bool = True, plot_drt:bool = True,
                     drt_peaks:bool = True, thickness:float = 0, rp_plt_type:str = 'ln', which:str = 'core',
                     init_from_ridge:bool = True, re_fit:bool = False, legend_loc:str = 'outside',
                     drtp_leg_loc_ots:bool = False, reverse = False):

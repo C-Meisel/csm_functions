@@ -28,7 +28,8 @@ from .fit_drt import dual_drt_save, pfrt_drt_save
 from .data_formatting import peis_data
 
 
-def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'best_id', **peis_args):
+def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'best_id',
+                          bayes_factors:bool = False, **peis_args):
     '''
     Plots the EIS, dual-fits and plots the DRT, and prints the ohmic and polarization resistance for a cell
     Generally this function is used on the first EIS spectra taken at standard testing conditions
@@ -48,6 +49,9 @@ def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'b
         This basically just sets the amout of peaks to fit
         if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
         if this is set to a integer, it fit the number of peaks set by that integer
+    bayes_factors, boolean: (default: False)
+        If true, plots hte bayes factors from the dual regression
+        These show the likelyness that a specific model is a good fit
 
     Return --> None, but it plots EIS and DRT. It also prints the ohmic and rp values of the cell
     '''
@@ -79,8 +83,23 @@ def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'b
     if peaks_to_fit == 'best_id': 
         best_id = dual_drt.get_best_candidate_id('discrete', criterion='lml-bic')
         peaks = best_id
+        print(peaks)
 
     else: peaks = peaks_to_fit
+
+    if bayes_factors == True:
+        # Plot normalized Bayes factors for each model
+        # This is taken directly from https://github.com/jdhuang-csm/hybrid-drt/blob/main/tutorials/Fitting%20EIS%20data.ipynb
+        # Credit to Dr. Jake Huang
+        fig, axes = plt.subplots(1, 3, figsize=(7, 2.25), sharex=True, sharey=True)
+        for i, crit in enumerate(['bic', 'lml', 'lml-bic']):
+            dual_drt.plot_norm_bayes_factors('discrete', criterion=crit, marker='o', ax=axes[i])
+            axes[i].set_title(crit.upper())
+        
+        if i > 0:
+            axes[i].set_ylabel('')
+            
+        fig.tight_layout()
 
     # - Setting the Dual Model    
     model_dict = dual_drt.get_candidate(peaks,'discrete')
@@ -344,7 +363,6 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
             model_dict = drt.get_candidate(peaks,'discrete')
             model = model_dict['model']
 
-            
             # --- Plotting
             label = po2+ '% O$_2$'
             # drt.plot_candidate_distribution(peaks, 'discrete',mark_peaks=False, label=label, ax=ax, area=area)
