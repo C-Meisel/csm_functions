@@ -337,3 +337,49 @@ def cut_induct(df):
     df = df.iloc[cut_inductance_points:,:]
 
     return df
+
+def cut_ohmic(df):
+    '''
+    Cut Ohmic
+    This function is used to subtract off the ohmic resistance off of an EIS spectra
+    All spectra will be plotted to start roughly at 0
+    It finds the last negative value in the EIS data and subtracts the zreal from all values in the df
+
+    If the spectra does not cross the x-axis, the point with the lowest zimag is used as a proxie for the point
+    that crosses the x axis.
+
+    Parameters
+    ----------
+    df, pandas.dataframe:
+        dataframe where the ohmic resistance will be subtracted
+        This dataframe should be one from an EIS spectra taken from a Gamry
+    
+    Return --> the new dataframe where the ohmic resistance is subtracted off the data
+    '''
+    no_neg = False
+
+    # Seeing if the Zreal crosses the x-axis
+    for i,row in df.iterrows():
+        if df.iloc[i]['ohm.1'] < 0:
+            no_neg = True
+            break
+            
+    # - Finding the ohmic resistance
+    if no_neg == True:
+        for i,row in df.iterrows():
+            if df.iloc[i]['ohm.1'] < 0:
+                ohmic = df.iloc[i]['ohm']
+            else:
+                break
+    else:
+        # ohmic = df['ohm'].min()
+        min_idx = df['ohm.1'].idxmin()
+        ohmic = df['ohm'].loc[min_idx]
+        df = df.truncate(before = min_idx)
+        df = df.reset_index(drop=True)
+        print(df)
+
+    for i,row in df.iterrows():
+        df.iloc[i]['ohm'] = df.iloc[i]['ohm']-ohmic
+
+    return df

@@ -200,6 +200,68 @@ def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
 
     plt.tight_layout()
 
+def plot_sc_peiss(area:float, condition:str, loc:str, ncol:int=1,
+                legend_loc:str='best', cut_inductance:bool = False,**plot_args):
+    '''
+    Enables multiple EIS spectra to be stacked on the same plot.
+    
+    Parameters:
+    -----------
+    area,float: 
+        The active cell area in cm^2
+    condition,str: 
+        The condition of the EIS data. This is what will be in the legend.
+    loc,str:
+        Location of the .DTA file that contains the EIS data.
+    ncol,int:
+        The number of columns in the legend of the plot.
+    legend_loc,str: 
+        The location of the legend. Best is the best spot, Outside places the legend
+        outside the plot.
+    cut_inductance, bool: (default = False)
+        If this is set to true, the negative inductance values at the beginning of the DataFrame
+    plot_args, dict: 
+        Any arguments that are passed to the plot function.
+
+    Return --> none but it plots the figure
+    '''
+    df = get_eis_data(loc) # Reads the .DTA file and saves the PEIS data as a dataframe
+
+    area = area/2 # Cuts area in half because there are two electrodes in a symmetric cell
+
+    df['ohm.1'] = df['ohm.1'].mul(-1*area)
+    df['ohm'] = df['ohm'].mul(area)
+    df_useful = df[['ohm','ohm.1']] #returns the useful information
+
+    df_useful = cut_ohmic(df_useful)
+
+
+    if cut_inductance == True:
+        df_useful = cut_induct(df_useful)
+        legend_loc = 'outside'
+
+    # ----- Plotting
+    plt.plot(df_useful['ohm'],df_useful['ohm.1'],'o',**plot_args,label = condition) #plots data
+
+    plt.xlabel('Zreal (\u03A9 cm$^2$)',size=18) #\u00D7
+    plt.ylabel('$\u2212$Zimag (\u03A9 cm$^2$)',size=18)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    dashes = [6,2,2,2,6,2,2,4,6,2,6,4]
+    plt.axhline(y=0, color='k',dashes=dashes)
+    plt.axis('scaled') #Keeps X and Y axis scaled 1 to 1
+    plt.locator_params(axis='y', nbins=3) # Sets the number of ytick labels but still has matplotlib place them
+
+    # If statement determines legend loc
+    if legend_loc == 'best': 
+        plt.legend(loc='best',fontsize='x-large')
+    elif legend_loc == 'outside':
+        plt.legend(loc='upper left',bbox_to_anchor=(1,1),ncol=ncol)
+    else: #this else statement is a default if one of the earlier statements causes an error
+        plt.legend(loc='upper left',bbox_to_anchor=(1,1),ncol=ncol)
+
+    plt.tight_layout()
+
+
 def plot_eis_ocvs(loc:str, label:str, ymin:float=1.00, ymax:float=1.10, ncol:int=1):
     '''
     Plots the ocv that is taken right before the EIS data. This function can stack to plot

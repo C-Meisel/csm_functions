@@ -578,6 +578,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1:
             file1 = os.path.join(folder_loc,file)
 
+    print(first_file)
     if first_file == 'default': # if another file is specified as the first file, this file will be used to find T0
         T0_stamp = fl.get_timestamp(file1) # gets time stamp from first file
         t0 = T0_stamp.strftime("%s") # Converting Datetime to seconds from Epoch
@@ -672,7 +673,7 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'all':
-            init_v = get_init_v(folder_loc,fc=True) # folder_loc
+            init_v = get_init_v(folder_loc, fc=True, first_file=first_file) # folder_loc
 
             m_mv = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
             m_mvs = f'{round(m_mv,2)}'
@@ -1312,8 +1313,31 @@ def lnpo2(ohmic_asr:np.array,rp_asr:np.array,O2_conc:np.array):
     plt.tight_layout()
     plt.show()
 
-def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
-    
+def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True, clean_axis = True, **plot_args):
+    '''
+    Plots fuel cell galvanoStb and EC_galvanoStb on the same plot
+
+    Parameters
+    -----------
+    folder_loc, string:
+        The location of the folder that contains the .DTA files to be plotted
+    fit, bool: (default = True)
+        Whether or not to linearly fit the data and print on the plot
+    fc_ocv, bool: (default = True) 
+        If true, finds the ocv of the cell and plots a horrozontal line on the plot
+    plot_args, dict:
+        Any arguments that are passed to the plot function.
+        generally for presentations I use markersize = 20
+    clean_axis, string: (default = True)
+        When true, plots the Voltage axis with less points
+        This is a much cleaner way to plot and looks better when presenting
+        however it clears out the Y axis so if you want to zoom in on an image, set this to False
+
+    Returns --> None, but it plots the data and shows it
+    '''
+
+    if len(plot_args)==0: # Basically if hte dictionary is empty
+        plot_args['markersize'] = 20
 
     ' //////////// ------- Organize & Plot FC data  ------- //////////// '
     files = os.listdir(folder_loc) # obtaining a list of the files in the desired folder
@@ -1366,10 +1390,12 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
     cat_dfs_fc = pd.concat(dfs,ignore_index=True)# (s) Combine all the DataFrames in the file folder
     cat_dfs_fc.sort_values(by=['s'])
     cat_dfs_fc['s'] = (cat_dfs_fc['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
-    
+    end_time_fc = int(cat_dfs_fc['s'].max())
+
+
     # ------- plotting:
     fig, ax = plt.subplots()
-    ax.plot(cat_dfs_fc['s'],cat_dfs_fc['V vs. Ref.'],'.k')
+    ax.plot(cat_dfs_fc['s'],cat_dfs_fc['V vs. Ref.'],'.k',**plot_args)
 
     ' //////////// ------- Organize & Plot EC data  ------- //////////// '
     files = os.listdir(folder_loc)
@@ -1408,20 +1434,23 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
     
     cat_dfs_ec = pd.concat(dfs) # (s) Combine all the DataFrames in the file folder
     cat_dfs_ec['s'] = (cat_dfs_ec['s']-int(t0_ec))/3600 # (hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
+    end_time_ec = int(cat_dfs_ec['s'].max())
+
 
     # ------- Plotting
-    ax.plot(cat_dfs_ec['s'],cat_dfs_ec['V vs. Ref.'],'.k')
+    ax.plot(cat_dfs_ec['s'],cat_dfs_ec['V vs. Ref.'],'.k', **plot_args)
 
     ' ------- Formatting, fitting, and writing the slope on the graph: '
-    fontsize = 16
+    fontsize = 'xx-large'
     ax.set_xlabel('Time (hrs)',fontsize = fontsize)
     ax.set_ylabel('Voltage (V)',fontsize = fontsize)
-    ax.tick_params(axis='both', which='major', labelsize=12) #changing tick label size
+    ax.tick_params(axis='both', which='major', labelsize='x-large') #changing tick label size
     ax.set_ylim(0,1.5)
 
     # ------- Finding the OCV at the beginning this Stability test and plotting it
-    ocv = get_init_ocv(folder_loc,fc_ocv)
-    ax.axhline(y=ocv,color='k',alpha=0.5,linestyle='--') 
+    if fc_ocv == True:
+        ocv = get_init_ocv(folder_loc,fc_ocv)
+        ax.axhline(y=ocv,color='k',alpha=0.5,linestyle='--',linewidth=2) 
 
     # ------- Fitting and writing the slope on the graph:
     if fit == True:
@@ -1442,6 +1471,21 @@ def plot_fc_ec_galvano(folder_loc:str, fit:bool = True, fc_ocv:bool = True):
         # --- Writing the slope on the graph
         plt.figtext(0.15,0.20, 'Electrolysis Cell Stability: ' + ms_ec + ' mV/khrs\n\n'
                             + 'Fuel Cell Stability: ' + ms_fc + ' mV/khrs',weight='bold',size='x-large')
+        
+
+    # ----- Excessive formattting
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.tick_params(axis='both', which='major', labelsize='x-large')
+
+    if clean_axis == True:
+        ax.set_yticks([0,0.8,ocv,1.3])
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.4g'))
+        ax.yaxis.labelpad = -10
+
+        ax.set_xticks([0,end_time_fc,end_time_ec])
+
+
     plt.tight_layout()
     plt.show()
 

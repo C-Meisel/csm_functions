@@ -125,7 +125,6 @@ def arrhenius_plots(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = 
 
             # ----- Inverting the EIS data
             full_loc = os.path.join(folder_loc,eis)
-            print(full_loc)
             drt = DRT()
             df = read_eis(full_loc)
             freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
@@ -278,7 +277,7 @@ def arrhenius_plots(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = 
         ax1.set_xlabel('1000/T (1/K)')
         axy2.set_xlabel('Temperature (\u00B0C)')
         ax1.set_ylabel('ln(\u03C3T) (sK/cm)')
-        axx2.set_ylabel('Conductivity (S/cm)')
+        axx2.set_ylabel('Rp ASR(\u03A9*$cm^2$)')
 
         # - Calculating and printing activation energy
         k = 8.617*10**-5 #boltzmanns constant in Ev/K

@@ -8,6 +8,8 @@ import pandas as pd
 import csv
 from shutil import copyfile
 import os
+from bayes_drt2 import file_load as fl
+
 
 def dta2csv(loc:str):
     '''
@@ -105,7 +107,7 @@ def peis_data(area:float,loc:str):
 
     return df_useful
 
-def get_init_ocv(folder_loc:str, fc:bool = True) -> float:
+def get_init_ocv(folder_loc:str, fc:bool = True, first_file='default') -> float:
     '''
     This function finds the first OCV data file for a stability test, finds the average OCV, and returns it
 
@@ -117,6 +119,10 @@ def get_init_ocv(folder_loc:str, fc:bool = True) -> float:
         determines whether to find the first ocv file for a fuel cell mode stability test,
         or an electrolysis cell stability test.
         set to False to find the first value of an electrolysis cell mode stability test.
+    first_file, string: (default = 'default')
+        Identifies the first file in the stability test. This is used as a time reference
+        If 'default' then the first file taken is used
+        If you want to change the first file, put the loc in place of 'default'
 
     Returns --> The average OCV of the first OCV data file as a float.
     '''
@@ -125,9 +131,13 @@ def get_init_ocv(folder_loc:str, fc:bool = True) -> float:
     files = os.listdir(folder_loc)
 
     if fc == True:
-        for file in files:
-            if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1):
-                file1 = os.path.join(folder_loc,file)
+        if first_file == 'default': # if another file is specified as the first file, this file will be used to find T0
+            for file in files:
+                if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1):
+                    file1 = os.path.join(folder_loc,file)
+    
+        else:
+            file1 = first_file
 
     if fc == False:
         for file in files: #Finding the first file
@@ -152,7 +162,7 @@ def get_init_ocv(folder_loc:str, fc:bool = True) -> float:
     
     return df['V'].mean()
 
-def get_init_v(folder_loc:str, fc:bool = True) -> float:
+def get_init_v(folder_loc:str, fc:bool = True, first_file='default') -> float:
     '''
     This function finds the first galvanostatic hold data file for a stability test, finds the average Voltage, and returns it
 
@@ -164,6 +174,10 @@ def get_init_v(folder_loc:str, fc:bool = True) -> float:
         determines whether to find the first ocv file for a fuel cell mode stability test,
         or an electrolysis cell stability test.
         set to False to find the first value of an electrolysis cell mode stability test.
+    first_file, string: (default = 'default')
+        Identifies the first file in the stability test. This is used as a time reference
+        If 'default' then the first file taken is used
+        If you want to change the first file, put the loc in place of 'default'
 
     Returns --> The average voltage of the first galvanostatic hold data file as a float.
     '''
@@ -172,10 +186,14 @@ def get_init_v(folder_loc:str, fc:bool = True) -> float:
     files = os.listdir(folder_loc)
 
     if fc == True:
-        for file in files:
-            if file.find('Deg__#1.DTA')!=-1 and file.find('GS')!=-1:
-                file1 = os.path.join(folder_loc,file)
-
+        if first_file == 'default': # if another file is specified as the first file, this file will be used to find T0
+            for file in files:
+                if file.find('Deg__#1.DTA')!=-1 and file.find('GS')!=-1:
+                    file1 = os.path.join(folder_loc,file)
+        
+        else:
+            file1 = first_file
+            
     if fc == False:
         for file in files: #Finding the first file
             if file.find('ECstability__#1.DTA')!=-1 and file.find('GS')!=-1:

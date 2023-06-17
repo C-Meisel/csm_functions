@@ -911,7 +911,8 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
     Return --> None but one or more plots are created and shown
     '''
     
-    cell_name = os.path.basename(folder_loc).split("_", 3)[2]
+    # cell_name = os.path.basename(folder_loc).split("_", 3)[2]
+
 
     if start_file == 'default': #if another file is specified as the first file, this file will be used to find T0
         for file in os.listdir(folder_loc): #Finding the first file
@@ -920,6 +921,13 @@ def deg_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str = 
         t0 = int(fl.get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
     else:
         t0 = int(fl.get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
+
+    # cell_name = os.path.basename(folder_loc).split("_", 3)[2]
+
+    for file in os.listdir(folder_loc): # Finding the name of the cell
+        if file.find('PEIS')!=-1:
+            cell_name = os.path.basename(file).split("_", 1)[0]
+            break
 
     if eis == True:
         'Finding correct EIS files and formatting'
@@ -1117,8 +1125,6 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
     Return --> None but one or more plots are created and shown
     '''
     
-    cell_name = os.path.basename(folder_loc).split("_", 3)[2]
-
     if start_file == 'default': #if another file is specified as the first file, this file will be used to find T0
         for file in os.listdir(folder_loc): #Finding the first file
             if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1:
@@ -1126,6 +1132,14 @@ def deg_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, start_file:str =
         t0 = int(fl.get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
     else:
         t0 = int(fl.get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
+
+
+    # cell_name = os.path.basename(folder_loc).split("_", 3)[2]
+
+    for file in os.listdir(folder_loc): # Finding the name of the celll
+        if file.find('PEIS')!=-1:
+            cell_name = os.path.basename(file).split("_", 1)[0]
+            break
 
     if eis == True:
         'Finding correct EIS files and formatting'
@@ -1314,7 +1328,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
     Return --> None but one or more plots are created and shown
     '''
 
-    cell_name = os.path.basename(folder_loc).split("_", 3)[2]
+    # cell_name = os.path.basename(folder_loc).split("_", 3)[2]
 
     if first_file == 'default': #if another file is specified as the first file, this file will be used to find T0
         for file in os.listdir(folder_loc): #Finding the first file
@@ -1323,6 +1337,11 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
         t0 = int(fl.get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
     else:
         t0 = int(fl.get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
+
+    for file in os.listdir(folder_loc): # Finding the name of the celll
+        if file.find('PEIS')!=-1:
+            cell_name = os.path.basename(file).split("_", 1)[0]
+            break
 
     if eis == True:
         'Finding correct EIS files and formatting'
@@ -1462,7 +1481,7 @@ def ECstb_ocv_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str 
                 time = round((int(a10_ocv_deg_peis_time[i])-t0)/3600) # to convert to hours and round to the nearest hour from the test start
                 label = str(time) + ' Hours'
                 i = i+1
-                print(number,', ',map_fit_name, ', ', time, ', ',label)
+                # print(number,', ',map_fit_name, ', ', time, ', ',label)
 
                 # --- Plotting
                 inv = Inverter()
@@ -1521,7 +1540,7 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
     Return --> None but one or more plots are created and shown
     '''
 
-    cell_name = os.path.basename(folder_loc).split("_", 3)[2]
+    # cell_name = os.path.basename(folder_loc).split("_", 3)[2]
 
     if first_file == 'default': #if another file is specified as the first file, this file will be used to find T0
         for file in os.listdir(folder_loc): #Finding the first file
@@ -1530,6 +1549,11 @@ def ECstb_bias_eis_plots(folder_loc:str, jar_loc:str, area:float, first_file:str
         t0 = int(fl.get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
     else:
         t0 = int(fl.get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
+
+    for file in os.listdir(folder_loc): # Finding the name of the celll
+        if file.find('PEIS')!=-1:
+            cell_name = os.path.basename(file).split("_", 1)[0]
+            break
 
     if eis == True:
         'Finding correct EIS files and formatting'

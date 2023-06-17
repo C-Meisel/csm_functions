@@ -28,6 +28,16 @@ from .fit_drt import dual_drt_save, pfrt_drt_save
 from .data_formatting import peis_data
 
 
+' List of Functions to Re-package:'
+# - FC plots
+# - EC plots
+# - fcstb OCV eis plots (May not need to change these 4)
+# - fcstb bias eis plots
+# - ecstb OCV eis plots
+# - ecstb bias eis plots
+# - May need to re-re-make functions to save the fits (then I will never re-package again lol)
+
+
 def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'best_id',
                           bayes_factors:bool = False, **peis_args):
     '''
@@ -76,7 +86,7 @@ def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'b
     dual_drt = DRT() # Create a DRT instance
     df = read_eis(loc)
     freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
-    dual_drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+    dual_drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None),) # Fit the data 
     tau = dual_drt.get_tau_eval(20)
 
     # - Best Model to use to dual fit the DRT peaks:
@@ -175,7 +185,7 @@ def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'b
     print('Standard Ohmic',round(ohmic,3),'\u03A9cm\u00b2')
     print('Standard Rp',round(rp,3),'\u03A9cm\u00b2')
 
-def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None, peaks_to_fit:int = 'best_id'):
+def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None, peaks_to_fit:int = 'best_id', scale_prefix = ""):
     '''
     Quicker version to fit and plot a dual DRT spectra to EIS data.
     This function supports multiple graphs stacked on each other
@@ -201,13 +211,13 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
     drt = DRT()
     df = read_eis(loc)
     freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
-    drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+    drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data prior_strength=None
     tau = drt.get_tau_eval(20)
 
 
     # -- Selecting the number of peaks for the drt distribution to have.
     if peaks_to_fit == 'best_id':
-        best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+        best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic') #lml-bic'
         peaks = best_id
 
     else: peaks = peaks_to_fit
@@ -222,7 +232,7 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
         solo = True
         fig, ax = plt.subplots()
 
-    model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
+    model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True, scale_prefix=scale_prefix)
 
     # - Formatting
     ax.legend(fontsize='x-large')
