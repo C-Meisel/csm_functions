@@ -235,7 +235,6 @@ def plot_sc_peiss(area:float, condition:str, loc:str, ncol:int=1,
 
     df_useful = cut_ohmic(df_useful)
 
-
     if cut_inductance == True:
         df_useful = cut_induct(df_useful)
         legend_loc = 'outside'
@@ -352,7 +351,7 @@ def plot_ivfc(area:float, loc:str):
     plt.tight_layout()
     plt.show()
 
-def plot_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
+def plot_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg_cols:int=None):
     '''
     Plots multiple IV and power density curves, input is a tuple of (area,condition,location of IV curve)
 
@@ -365,6 +364,8 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
         Prints out Wmax in the terminal
     cmap,str: (default is None)
         If a colormap is defined here it will be used for the plots
+    leg_cols,int: (default is None)
+        how many columns the legend will have. If none, this will be based of the abount of curves being plot
 
     Return --> none but it plots the figure and shows it
     '''
@@ -428,16 +429,19 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
     ax2.tick_params(axis='both', which='major', labelsize='x-large')
 
     # --- Legend Formatting
-    num_curves = len(curves_conditions)
-    if num_curves <=4:
-        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
-    elif num_curves <=8:
-        ncol = int(round(num_curves/2))
-        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=ncol,handletextpad=0.02,columnspacing=1)
-    elif num_curves <=12:
-        ncol = int(round(num_curves/3))
-        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
-    
+    if leg_cols == None:
+        num_curves = len(curves_conditions)
+        if num_curves <=4:
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+        elif num_curves <=8:
+            ncol = int(round(num_curves/2))
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=ncol,handletextpad=0.02,columnspacing=1)
+        elif num_curves <=12:
+            ncol = int(round(num_curves/3))
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+    else:
+        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=leg_cols,handletextpad=0.02,columnspacing=1)
+
     plt.subplots_adjust(top=0.8)
     plt.tight_layout()
     plt.show()
@@ -490,7 +494,7 @@ def plot_ivec(area:float, loc:str, CD_at_V:float = 1.3):
     plt.tight_layout()
     plt.show()
 
-def plot_ivecs(area:float,condition:str,loc:str):
+def plot_ivecs(area:float,condition:str,loc:str, **plot_args:dict):
     '''
     Plots multiple electrolysis cell mode IV curves on same plot. This function can stack to plot
     multiple IVEC files on the same plot. Same as peiss.
@@ -503,7 +507,9 @@ def plot_ivecs(area:float,condition:str,loc:str):
         The condition of the IV curve. This will be the label of the curve in the legend
     loc, string: 
         The location .DTA file that contains the IVEC curve
-    
+    plot_args, dict: (optional)
+        passes arguments to the plot_peis function
+
     Return --> none but it plots the figure
     '''
     
@@ -517,9 +523,14 @@ def plot_ivecs(area:float,condition:str,loc:str):
     else:
         sign = 1
 
+    if df_useful['A'].loc[0] <= 0: #this is put in because the Gamry 3000 and 5000 have different signs on the voltage of IVEC curve
+        a_sign = 1
+    else:
+        a_sign = -1
+
     # ------- Plotting
     with plt.rc_context({"axes.spines.right": False, "axes.spines.top": False}):
-        plt.plot(df_useful['A'], sign*df_useful['V'],'o', label=condition,markersize=9)
+        plt.plot(a_sign*df_useful['A'], sign*df_useful['V'],'o', label=condition,markersize=9, **plot_args)
     plt.xlabel('Current Density ($A/cm^2$)', fontsize='xx-large')
     plt.ylabel('Voltage (V)', fontsize='xx-large')
     plt.legend(loc='best', fontsize = 'x-large')
@@ -1587,7 +1598,7 @@ def curtin_echem_plotting(loc:str, area:float = None, CD_at_V:float = 1.3, time_
 
     return()
 
-def curtin_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
+def curtin_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg_cols:int=None):
     '''
     Plots data gathered using the labview testing software developed by Prof. Shao at Curtin university
     The data is gathered using a Kiethley
@@ -1602,6 +1613,8 @@ def curtin_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
         Prints out Wmax in the terminal
     cmap,str: (default is None)
         If a colormap is defined here it will be used for the plots
+    leg_cols,int: (default is None)
+        how many columns the legend will have. If none, this will be based of the abount of curves being plot
 
     Return --> none but it plots the figure and shows it
     '''
@@ -1675,16 +1688,20 @@ def curtin_ivfcs(curves_conditions:tuple, print_Wmax=False,cmap=None):
     ax2.tick_params(axis='both', which='major', labelsize='x-large')
 
     # --- Legend Formatting
-    num_curves = len(curves_conditions)
-    if num_curves <=4:
-        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
-    elif num_curves <=8:
-        ncol = int(round(num_curves/2))
-        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=ncol,handletextpad=0.02,columnspacing=1)
-    elif num_curves <=12:
-        ncol = int(round(num_curves/3))
-        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
-    
+    if leg_cols == None:
+        num_curves = len(curves_conditions)
+        if num_curves <=4:
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+        elif num_curves <=8:
+            ncol = int(round(num_curves/2))
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=ncol,handletextpad=0.02,columnspacing=1)
+        elif num_curves <=12:
+            ncol = int(round(num_curves/3))
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+    else:
+        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=leg_cols,handletextpad=0.02,columnspacing=1)
+
+
     plt.subplots_adjust(top=0.8)
     plt.tight_layout()
     plt.show()

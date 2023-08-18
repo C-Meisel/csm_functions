@@ -1895,9 +1895,55 @@ def o2_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array =
 
     return(mr)
 
+def quick_mapdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None,nonneg=False):
+    '''
+    Quicker version to fit and plot a Map DRT spectra to EIS data.
+    This function supports multiple graphs stacked on each other
+    If one spectra is being plot, the fig and ax are made inside the function.
 
+    Parameters
+    ----------
+    loc, str: (path to a directory)
+        The location of the folder containing the EIS files (path to folder)
+    area, float:
+        The active cell area in cm^2
+    ax, plt.Axes:
+        matplotlib axes object. Used to plot the spectra. Needed to plot different spectra on the same figure
+    label, str:
+        Label for the spectra
+    nonneg, bool: (Default = False)
+        If True, constrain the distribution to non-negative values
 
+    Return --> None, but it plots and shows one or more plots
+    '''
 
+    # -- Gathering data
+    df = fl.read_eis(loc)
+    freq,z = fl.get_fZ(df)
+    inv = Inverter()
+    inv.fit(freq,z,init_from_ridge=True,outliers=False,nonneg=nonneg)
+
+    # --- Plotting
+    solo = None 
+    if ax == None: # If only one spectra is being plot, create the fig and axis in the function
+        solo = True
+        fig, ax = plt.subplots()
+
+    bp.plot_distribution(None,inv,ax,unit_scale='',label= label)
+
+    # - Formatting
+    ax.legend(fontsize='x-large')
+    ax.xaxis.label.set_size('xx-large') 
+    ax.yaxis.label.set_size('xx-large')
+    ax.tick_params(axis='both', labelsize='x-large')
+
+    # - Excessive formatting
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    if solo == True:
+        plt.tight_layout()
+        plt.show()
 
 
 

@@ -472,7 +472,7 @@ def plot_ivec(area:float, loc:str, CD_at_V:float = 1.5):
     plt.tight_layout()
     plt.show()
 
-def plot_ivecs(area:float,condition:str,loc:str):
+def plot_ivecs(area:float,condition:str,loc:str, **plot_args:dict):
     '''
     Plots multiple electrolysis cell mode IV curves on same plot. This function can stack to plot
     multiple IVEC files on the same plot. Same as peiss.
@@ -485,6 +485,8 @@ def plot_ivecs(area:float,condition:str,loc:str):
         The condition of the IV curve. This will be the label of the curve in the legend
     loc, string: 
         The location .DTA file that contains the IVEC curve
+    plot_args, dict: (optional)
+        passes arguments to the plot_peis function
     
     Return --> none but it plots the figure
     '''
@@ -508,7 +510,7 @@ def plot_ivecs(area:float,condition:str,loc:str):
 
     # ------- Plotting
     with plt.rc_context({"axes.spines.right": False, "axes.spines.top": False}):
-        plt.plot(df_useful['A'], sign*df_useful['V'],'o', label=condition,markersize=9)
+        plt.plot(df_useful['A'], sign*df_useful['V'],'o', label=condition, markersize=9, **plot_args)
     plt.xlabel('Current Density ($A/cm^2$)', fontsize='xx-large')
     plt.ylabel('Voltage (V)', fontsize='xx-large')
     plt.legend(loc='best', fontsize = 'x-large')

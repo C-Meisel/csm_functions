@@ -372,12 +372,11 @@ def cut_ohmic(df):
             else:
                 break
     else:
-        # ohmic = df['ohm'].min()
-        min_idx = df['ohm.1'].idxmin()
-        ohmic = df['ohm'].loc[min_idx]
-        df = df.truncate(before = min_idx)
+        ohmic = df['ohm'].min()
+        # min_idx = df['ohm.1'].idxmin()
+        # ohmic = df['ohm'].loc[min_idx]
+        # df = df.truncate(before = min_idx)
         df = df.reset_index(drop=True)
-        print(df)
 
     for i,row in df.iterrows():
         df.iloc[i]['ohm'] = df.iloc[i]['ohm']-ohmic
