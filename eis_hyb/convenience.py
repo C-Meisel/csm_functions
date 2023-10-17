@@ -18,6 +18,8 @@ import sys # Used to go through the system
 import traceback # Used to look at errors
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+from matplotlib.colors import ListedColormap
+
 
 from hybdrt.models import DRT, elements, drtbase
 import hybdrt.plotting as hplt
@@ -754,9 +756,9 @@ def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         plt.show()
 
 
-
-def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=True,
-                    drt_peaks:bool=True, ncol:int=1, legend_loc:str='best'):
+def fc_bias_plots_dual(folder_loc:str, area:float, eis:bool=True, drt:bool=True,
+                        drt_peaks:bool=True, ncol:int=1, legend_loc:str='best',  
+                        overwrite:bool = False, peaks_to_fit:int = 'best_id'):
     '''
     Finds all EIS files in the folder_loc taken during bias testing in Fuel Cell mode and plots the EIS
     The corresponding DRT fits are located and also plotted if drt = True
@@ -771,8 +773,6 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
     -----------
     folder_loc, str:
         The folder location of the EIS files (path to directory)
-    fit_path, str:
-        The folder location of the DRT fits (path to directory)
     area, float: 
         The active cell area in cm^2
     eis, bool: (default = True)
@@ -788,7 +788,14 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
     legend_loc, str: (default = 'best')
         The location of the legend. The other option is to put 
         the legend outside the figure and this is done by setting legend_loc = 'outside'
-
+    overwrite, bool: (default = False)
+        If the data already exists in the cell excel file, then this will overwrite that data with
+    peaks_to_fit, str/int: (default: 'best_id')
+        Sets the number of discrete elements in the EIS to fit in the DRT
+        This basically just sets the amount of peaks to fit
+        if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
+        if this is set to a integer, it fit the number of peaks set by that integer
+        
     Return --> None but one or more plots are created and shown
     '''
     
@@ -798,7 +805,7 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
     for file in dta_files: #Finding all fuel cell bias EIS files
         if (file.find('PEIS')!=-1) and (file.find('bias.DTA')!=-1) and (file.find('_n')!=-1):
             bias_eis.append(os.path.join(folder_loc,file))
-    cell_name = os.path.basename(fit_path).split("_", 2)[1]
+    cell_name = os.path.basename(folder_loc).split('_')[2]
     bias_eis = sorted(bias_eis, key=lambda x: int((x[x.find('550C_n')+len('550C_n'):x.rfind('bias')]))) #Sorts numerically by bias
 
     for file in dta_files: #Finding the 0 bias condition and adding it to the beginning of the list of bias_eis
@@ -827,130 +834,314 @@ def fc_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:b
             c = c+1
         plt.show()
 
-    # 'Plotting DRT'
-    # if drt == True:
-    #     fig, ax = plt.subplots() #initializing plots for DRT
+    ' ---------- inverting, plotting, and dual fitting all the FC bias DRT spectra'
+    if drt == True: 
+        fig, ax = plt.subplots() #initializing plots for DRT
 
-    #     # --- Setting up the color map
-    #     cmap = plt.cm.get_cmap('plasma') #cmr.redshift 
-    #     color_space = np.linspace(0.2,0.8,len(bias_eis)) # array from 0-1 for the colormap for plotting
-    #     c = 0 # index of the color array
+        # --- Setting up the color map
+        cmap = plt.cm.get_cmap('plasma') #cmr.redshift 
+        color_space = np.linspace(0.2,0.8,len(bias_eis)) # array from 0-1 for the colormap for plotting
+        c = 0 # index of the color array
 
-    #     # --- Initializing lists of data to save
-    #     bias_array = np.array([]) # Applied bias of the eis spectra relative to OCV
-    #     ohmic_asr = np.array([]) # ohm*cm^2
-    #     rp_asr = np.array([]) # ohm*cm^2
+        # --- Initializing lists for further analysis
+        bias_array = np.array([]) # Bias of the cell (V) realtive to OCV
+        ohmic_asr = np.array([]) # ohm*cm^2
+        rp_asr = np.array([]) # ohm*cm^2
+        df_tau_r = pd.DataFrame(columns = ['Bias (V)','Tau','Resistance']) #Initializing DataFrame to save temperature
 
-    #     for peis in bias_eis: # For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
-    #         # --- Finding and formatting
-    #         loc = os.path.join(folder_loc, peis) # creates the full path to the file
-    #         bias = peis[peis.find('550C_')+len('PEIS_'):peis.rfind('bias')] #gets the bias from the file name
-    #         map_fit_name = cell_name + '_map_fit_' + bias + 'bias.pkl'
-    #         if len(bias) > 1:
-    #             bias = -int(bias[1:])/10
+        for peis in bias_eis: #For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
+            # --- Finding and formatting
+            loc = os.path.join(folder_loc, peis) # creates the full path to the file
+            bias = peis[peis.find('550C_')+len('PEIS_'):peis.rfind('bias')] #gets the bias from the file name
+            if len(bias) > 1:
+                bias = -int(bias[1:])/10
                 
-    #         label =  str(bias) + 'V'
+            label =  str(bias) + 'V'
 
-    #         # --- Updating arrays and plotting
-    #         inv = Inverter()
-    #         inv.load_fit_data(os.path.join(fit_path,map_fit_name))
-    #         bias_array = np.append(bias_array,float(bias))
-    #         ohmic_asr = np.append(ohmic_asr,inv.R_inf*area)
-    #         rp_asr = np.append(rp_asr,inv.predict_Rp()*area)
-    #         color = cmap(color_space[c])
-    #         bp.plot_distribution(None,inv,ax,unit_scale='',label = label, color = color)
-    #         c = c + 1
-    #     ax.legend()
-    #     plt.show()
+            # --- Inverting the EIS data
+            drt = DRT()
+            df = read_eis(loc)
+            freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+            drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+
+            # drt.plot_distribution(mark_peaks=True, label=label, ax=ax, area=area)
+            tau = drt.get_tau_eval(20)
+
+            # - Selecting the number of peaks for the drt distribution to have.
+            if peaks_to_fit == 'best_id':
+                best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+                peaks = best_id
+
+            else: peaks = peaks_to_fit
+
+            # - Selecting the model. The number of peaks to plot and fit
+            model_dict = drt.get_candidate(peaks,'discrete')
+            model = model_dict['model']
+
+            # --- Plotting
+            color = cmap(color_space[c])
+            model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True,color=color)
+            c = c + 1
+
+            # --- Appending resistance values to lists
+            bias_array = np.array([]) # Applied bias of the eis spectra relative to OCV
+            ohmic_asr = np.append(ohmic_asr,drt.predict_r_inf() * area)
+            rp_asr = np.append(rp_asr,drt.predict_r_p() * area)
+
+            # --- obtain time constants from inverters and Appending tau and r for each peak into df_tau_r
+            tau = model_dict['peak_tau'] # τ/s
+
+            # - Obtaining the resistance value for each peak
+            r_list = []
+            for i in range(1,int(peaks)+1):
+                peak = 'R_HN'+str(i)
+                resistance = model.parameter_dict[peak]
+                r_list.append(resistance)
+
+            r = np.array(r_list) * area # Ω*cm2
+
+            i = 0
+            for τ in tau:
+                df_tau_r.loc[len(df_tau_r.index)] = [bias, τ, r[i]]
+                i = i+1
         
-    #     'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'
-    #     excel_name = '_' + cell_name + '_Data.xlsx'
-    #     excel_file = os.path.join(folder_loc,excel_name)
-    #     sheet_name = 'FC mode data'
-    #     exists = False
-
-    #     if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
-    #         writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
-    #         wb = load_workbook(excel_file, read_only=True) # Looking for the po2
-    #         if sheet_name in wb.sheetnames:
-    #             exists = True
-    #     elif os.path.exists(excel_file)==False:
-    #         writer = pd.ExcelWriter(excel_file,engine='xlsxwriter') #Creates a Pandas Excel writer using XlsxWriter as the engine. This will make a new excel file
-
-    #     if exists == False:
-    #         df_fc_bias = pd.DataFrame(list(zip(bias_array,ohmic_asr,rp_asr)),
-    #             columns =['Applied Bias (V)','Ohmic ASR (ohm*cm^2)', 'Rp ASR (ohm*cm^2)'])
-    #         df_fc_bias.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
-    #         writer.close() # Close the Pandas Excel writer and output the Excel file.
-
-    # ' --- DRT peak fitting and plotting --- '
-    # if drt_peaks == True:
-    #     bias_map_fits = [file for file in os.listdir(fit_path) if (file.find('bias')!=-1) and (file.find('fit_n')!=-1 or file.find('0bias')!=-1)] # gets all fuel cell map fits
-    #     bias_map_fits = natsort.humansorted(bias_map_fits,key=lambda y: (len(y),y)) #sorts by bias
-    #     bias_map_fits.reverse()
-
-    #     # --- Checking to see if the peaks have already been fit:
-    #     peak_data = False
-    #     excel_name = '_' + cell_name + '_Data.xlsx'
-    #     excel_file = os.path.join(folder_loc,excel_name)
-    #     peak_data_sheet = 'FC Bias DRT peak fits'
-
-    #     if os.path.exists(excel_file)==True: # Looking for the data excel file in the button cell folder
-    #         writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
-    #         wb = load_workbook(excel_file, read_only=True) # Looking for the Arrhenius Data Sheet
-    #         if peak_data_sheet in wb.sheetnames:
-    #             peak_data = True
-    #     elif os.path.exists(excel_file)==False:
-    #         writer = pd.ExcelWriter(excel_file,engine='xlsxwriter') #Creates a Pandas Excel writer using XlsxWriter as the engine. This will make a new excel file
+        # - Formatting
+        ax.legend(fontsize='x-large')
+        ax.xaxis.label.set_size('xx-large') 
+        ax.yaxis.label.set_size('xx-large')
+        ax.tick_params(axis='both', labelsize='x-large')
         
-    #     if peak_data == False: # Make the excel data list
-    #         # --- Fitting peaks and appending to a DataFrame
-    #         df_tau_r = pd.DataFrame(columns = ['Bias','Tau','Resistance']) #Initializing DataFrame to save temperature
-    #         for fit in bias_map_fits: #Loading DRT, fitting peaks, and saving to a DataFrame
-    #             # creating inverter and calling fits
-    #             inv = Inverter()
-    #             inv.load_fit_data(os.path.join(fit_path,fit))
-    #             inv.fit_peaks(prom_rthresh=0.05) # fit the peaks
+        plt.tight_layout()
+        plt.show()
 
-    #             # --- obtain time constants from inverters
-    #             tau = inv.extract_peak_info().get('tau_0') # τ/s
-    #             r = inv.extract_peak_info().get('R')*area # Ω*cm2
+        # >>>>>>>>>>>> Creating DataFrames and adding excel data sheets (or creating the file if need be)'
+        # ------- Cell Resistance Data
+        excel_name = '_' + cell_name + '_Data.xlsx'
+        excel_file = os.path.join(folder_loc,excel_name)
+        sheet_name = 'FC_bias_dual'
+        exists = False
 
-    #             # --- Obtaining bias
-    #             number = fit[fit.find('fit_n')+len('fit_n'):fit.rfind('bias')]
-    #             try:
-    #                 bias = -int(number)/10
-    #             except ValueError:
-    #                 bias = 0
+        exists, writer = excel_datasheet_exists(excel_file,sheet_name)
 
-    #             # Appending tau and r for each peak into df_tau_r
-    #             i = 0
-    #             for τ in tau:
-    #                 df_tau_r.loc[len(df_tau_r.index)] = [bias, τ, r[i]]
-    #                 i = i+1
+        if exists == False:
+            df_po2 = pd.DataFrame(list(zip(bias_array*100,ohmic_asr,rp_asr)),
+                columns =['Bias (V)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
+            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
+            writer.close() # Close the Pandas Excel writer and output the Excel file.
 
-    #         df_tau_r.to_excel(writer, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
-    #         writer.close() # Close the Pandas Excel writer and output the Excel file.
+        elif exists == True and overwrite == True:
+            df_po2 = pd.DataFrame(list(zip(bias_array*100,ohmic_asr,rp_asr)),
+                columns =['Bias (V)','Ohmic ASR (ohm*cm$^2$)','Rp ASR (ohm*cm$^2$)'])
+            
+            book = load_workbook(excel_file)
+            writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
+            writer.close() # Close the Pandas Excel writer and output the Excel file.
 
-    #     elif peak_data == True: #load the data into a DataFrame
-    #         df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+            df_po2 = pd.read_excel(excel_file,sheet_name)
 
-    #     # ----- plotting
-    #     cmap = 'plasma_r'
-    #     palette = sns.color_palette(cmap)
-    #     plot = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df_tau_r, hue='Bias',palette = palette,s=69)
+        # ------- Appending the Peak_fit data to an excel file
+        excel_name = '_' + cell_name + '_Data.xlsx'
+        excel_file = os.path.join(folder_loc,excel_name)
+        peak_data_sheet = 'FC_bias_dual_DRT_peaks'
+        exists_peaks = False
 
-    #     # ----- Aesthetic stuff
-    #     sns.set_context("talk")
-    #     fontsize = 14
-    #     sns.despine()
-    #     plot.set_ylabel('ASR (\u03A9 cm$^2$)',fontsize=fontsize)
-    #     plot.set_xlabel('Time Constant (\u03C4/s)',fontsize=fontsize)
-    #     plot.set(xscale='log')
-    #     plt.tight_layout()
-    #     plt.show()
+        exists_peaks, writer_peaks = excel_datasheet_exists(excel_file,peak_data_sheet)
+    
+        if exists_peaks == False: # Make the excel data list
+            df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
+            writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
+        
+        elif exists_peaks == True and overwrite == False: #load the data into a DataFrame
+            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+
+        elif exists_peaks == True and overwrite == True:
+            book = load_workbook(excel_file)
+            writer_peaks = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+            df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
+            writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
+
+            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+
+    ' --- DRT peak plotting --- '
+    if drt_peaks == True and drt==True:
+        # ----- plotting
+        cmap = plt.cm.get_cmap('plasma_r') #cmr.redshift
+        norm = Normalize(vmin=0.2, vmax=0.8)
+        plot = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df_tau_r, hue='Bias (V)',palette = cmap,norm=norm,s=69)
+
+    else:
+        # --- Retrieving the data
+        excel_name = '_' + cell_name + '_Data.xlsx'
+        excel_file = os.path.join(folder_loc,excel_name)
+        peak_data_sheet = 'FC_bias_dual_DRT_peaks'
+        exists_peaks = False
+        exists_peaks, writer_peaks = excel_datasheet_exists(excel_file,peak_data_sheet)
+        
+        if exists_peaks == True and overwrite == False: #load the data into a DataFrame
+            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+
+        # --- Plotting
+        cmap = plt.cm.get_cmap('plasma_r') #cmr.redshift
+        cmap = ListedColormap(plt.get_cmap('plasma_r')(np.linspace(0.2, 0.8, 256))) 
+        plot = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df_tau_r, hue='Bias (V)',palette = cmap,s=69)
+
+        # ----- Ascetics stuff
+        sns.set_context("talk")
+        fontsize = 14
+        sns.despine()
+        plot.set_ylabel('ASR (\u03A9 cm$^2$)',fontsize=fontsize)
+        plot.set_xlabel('Time Constant (\u03C4/s)',fontsize=fontsize)
+        plot.set(xscale='log')
+
+        plt.tight_layout()
+        plt.show()
+
+def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
+                drt:bool=True, ncol:int=1, legend_loc:str='best',
+                overwrite:bool = False, peaks_to_fit:int = 'best_id'):
+    '''
+    Finds all EIS files in the folder_loc taken during bias testing in Electrolysis cell mode and plots the EIS
+    The corresponding DRT fits are located and also plotted if drt = True
+    All data is append to a sheet in the cell data excel file if it does not already exist. If the data
+    does already exist that data is called upon for plotting
+
+    The .DTA EIS files are taken during a Gamry sequence that I use for testing the cell performance under
+    various biases
+
+    Parameters:
+    ------------
+    folder_loc, str: 
+        The folder location of the EIS files (path to directory)
+    area, float: 
+        The active cell area in cm^2
+    eis, bool: 
+        If True, the EIS spectra are plotted
+    drt, bool: 
+        If True, the DRT spectra are plotted
+    ncol, int: 
+        The number of columns in the legend
+    legend_loc, str: 
+        The location of the legend (default = 'best'). The other option is to put 
+        the legend outside the figure and this is done by setting legend_loc = 'outside'
+    overwrite, bool: (default = False)
+        If the data already exists in the cell excel file, then this will overwrite that data with
+    peaks_to_fit, str/int: (default: 'best_id')
+        Sets the number of discrete elements in the EIS to fit in the DRT
+        This basically just sets the amount of peaks to fit
+        if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
+        if this is set to a integer, it fit the number of peaks set by that integer
+        
+    Return --> None but one or more plots are created and shown
+    '''
+    
+    'Finding correct files and formatting'
+    dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
+    bias_eis = [] #initializing bias files list
+
+    for file in dta_files: #Finding all fuel cell bias EIS files
+        if (file.find('PEIS')!=-1) and (file.find('bias.DTA')!=-1) and (file.find('_n')==-1):
+            bias_eis.append(os.path.join(folder_loc,file))
+
+    cell_name = os.path.basename(folder_loc).split('_')[2]
+    bias_eis = sorted(bias_eis, key=lambda x: int((x[x.find('550C_')+len('550C_'):x.rfind('bias')]))) #Sorts numerically by bias
+
+    'Plotting EIS'
+    if eis == True:
+        for peis in bias_eis:
+            # --- Finding and formatting
+            loc = os.path.join(folder_loc, peis) # creates the full path to the file
+            bias = peis[peis.find('550C_')+len('PEIS_'):peis.rfind('bias')] #gets the bias from the file name
+            bias = int(bias)/10
+
+            nyquist_name =  str(bias) + 'V'
+
+            # --- Plotting
+            plot_peiss(area,nyquist_name,loc,ncol=ncol,legend_loc=legend_loc)
+        plt.show()
+
+    'Plotting DRT'
+    if drt == True:
+        fig, ax = plt.subplots() #initializing plots for DRT
+
+        # --- Initializing lists of data to save
+        bias_array = np.array([]) # Applied bias of the eis spectra relative to OCV
+        ohmic_asr = np.array([]) # ohm*cm^2
+        rp_asr = np.array([]) # ohm*cm^2
+
+        for peis in bias_eis: # For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
+            # --- Finding and formatting
+            loc = os.path.join(folder_loc, peis) # creates the full path to the file
+            bias = peis[peis.find('550C_')+len('PEIS_'):peis.rfind('bias')] #gets the bias from the file name
+            map_fit_name = cell_name + '_map_fit_' + bias + 'bias.pkl'
+            if int(bias) > 0:
+                bias = int(bias)/10
+
+            label =  str(bias) + 'V'
+
+            # --- Inverting the EIS data
+            drt = DRT()
+            df = read_eis(loc)
+            freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+            drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+            
+            # drt.plot_distribution(mark_peaks=True, label=label, ax=ax, area=area)
+            tau = drt.get_tau_eval(20)
+
+            # - Selecting the number of peaks for the drt distribution to have.
+            if peaks_to_fit == 'best_id':
+                best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+                peaks = best_id
+
+            else: peaks = peaks_to_fit
+
+            # - Selecting the model. The number of peaks to plot and fit
+            model_dict = drt.get_candidate(peaks,'discrete')
+            model = model_dict['model']
+
+            # --- Plotting
+            model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
+
+            # --- Appending resistance values to lists
+            bias_array = np.array([]) # Applied bias of the eis spectra relative to OCV
+            ohmic_asr = np.append(ohmic_asr,drt.predict_r_inf() * area)
+            rp_asr = np.append(rp_asr,drt.predict_r_p() * area)
+
+        # - Formatting
+        ax.legend(fontsize='x-large')
+        ax.xaxis.label.set_size('xx-large') 
+        ax.yaxis.label.set_size('xx-large')
+        ax.tick_params(axis='both', labelsize='x-large')
+        
+        plt.tight_layout()
+        plt.show()
 
 
+        # >>>>>>>>>>>> Creating DataFrames and adding excel data sheets (or creating the file if need be)'
+        # ------- Cell Resistance Data
+        excel_name = '_' + cell_name + '_Data.xlsx'
+        excel_file = os.path.join(folder_loc,excel_name)
+        sheet_name = 'EC_bias_dual'
+        exists = False
+
+        exists, writer = excel_datasheet_exists(excel_file,sheet_name)
+
+        if exists == False:
+            df_po2 = pd.DataFrame(list(zip(bias_array*100,ohmic_asr,rp_asr)),
+                columns =['Bias (V)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
+            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
+            writer.close() # Close the Pandas Excel writer and output the Excel file.
+
+        elif exists == True and overwrite == True:
+            df_po2 = pd.DataFrame(list(zip(bias_array*100,ohmic_asr,rp_asr)),
+                columns =['Bias (V)','Ohmic ASR (ohm*cm$^2$)','Rp ASR (ohm*cm$^2$)'])
+            
+            book = load_workbook(excel_file)
+            writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
+            writer.close() # Close the Pandas Excel writer and output the Excel file.
+
+            df_po2 = pd.read_excel(excel_file,sheet_name)
 
 def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array = None,
                         rmv_concs_r:np.array = None, rmv_concs_l:np.array = None,plot_all=False):

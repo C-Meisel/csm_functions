@@ -25,7 +25,7 @@ from .plotting import plot_peiss, plot_ivfcs
 from .convenience import excel_datasheet_exists
 from .data_formatting import peis_data
 
-def arrhenius_plots(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = True, plot_drt:bool = True,
+def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = True, plot_drt:bool = True,
                     drt_peaks:bool = True, thickness:float = 0, rp_plt_type:str = 'ln', re_fit:bool = False,
                     legend_loc:str = 'outside', drtp_leg_loc_ots:bool = False, reverse = False, peaks_to_fit:int = 'best_id'):
     '''
@@ -118,6 +118,10 @@ def arrhenius_plots(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = 
     if exists == False or re_fit == True: # Fit the data and make the excel data list
         if plot_drt == True:
             fig, ax = plt.subplots()
+            # - Setting COlormap
+            cmap = plt.cm.get_cmap('coolwarm') #cmr.redshift
+            color_space = np.linspace(0,1,len(ahp_eis)) # array from 0-1 for the colormap for plotting
+            c = 0 # indicie of the color array
 
         for c,eis in enumerate(ahp_eis): # Dual DRT Inverting all ahp EIS data
             # - Extracting the temperature data
@@ -152,7 +156,10 @@ def arrhenius_plots(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = 
             # ----- Setting up DRT plot if desired
             if plot_drt == True:
                 label = label
-                model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
+                color = cmap(color_space[c])
+                # marker_dict = {'markerfacecolor': color}
+                model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True,color=color)
+                c = c + 1
 
             # --- obtain time constants from inverters and Appending tau and r for each peak into df_tau_r
             tau = model_dict['peak_tau'] # τ/s
@@ -477,7 +484,7 @@ def arrhenius_iv_curves(folder_loc:str, area:float, temps:list, reverse:bool=Fal
 
     plot_ivfcs(curves_conditions,print_Wmax=True,cmap=cmap)
 
-def arrhenius_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps:np.array = None,
+def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps:np.array = None,
                         rmv_temp_r:np.array = None, rmv_temp_l:np.array = None):
     '''
     This function is meant to linearly fit a single DRT peak across a temperature range.
@@ -510,7 +517,7 @@ def arrhenius_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps:np.a
         if file.endswith('Data.xlsx'):
             data_file = os.path.join(folder_loc,file)
             break
-    print(data_file)
+
     data = pd.read_excel(data_file, 'Ahp_dual_DRT_peaks')
     data = data[(data['Tau']>tau_low) & (data['Tau']<tau_high)]
 
