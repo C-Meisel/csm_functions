@@ -1231,11 +1231,11 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
 
         # --- Extras
         axs[1].axhline(y=0, color= 'r', linestyle='--') #Plots 0 Bias on the Current density chart
-        plt.figtext(0.14,0.82,'Electrolysis',weight='bold',size='large')
-        plt.figtext(0.14,0.76,'Fuel Cell',weight='bold',size='large') # Voltage graph
+        plt.figtext(0.16,0.85,'Electrolysis',weight='bold',size='large')
+        plt.figtext(0.16,0.76,'Fuel Cell',weight='bold',size='large') # Voltage graph
 
-        plt.figtext(0.14,0.38,'Fuel Cell',weight='bold',size='large') # Current graph
-        plt.figtext(0.14,0.32,'Electrolysis',weight='bold',size='large')
+        plt.figtext(0.16,0.39,'Fuel Cell',weight='bold',size='large') # Current graph
+        plt.figtext(0.16,0.30,'Electrolysis',weight='bold',size='large')
         plt.tight_layout()
         plt.show()
         

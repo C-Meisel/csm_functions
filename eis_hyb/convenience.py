@@ -31,8 +31,6 @@ from .data_formatting import peis_data
 
 
 ' List of Functions to Re-package:'
-# - FC plots
-# - EC plots
 # - fcstb OCV eis plots (May not need to change these 4)
 # - fcstb bias eis plots
 # - ecstb OCV eis plots

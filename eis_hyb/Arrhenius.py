@@ -233,10 +233,6 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
 
             df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
 
-        # # --- Converting the lists back to np arrays
-        # ohmic = np.array(ohmic) # Ω
-        # rp = np.array(rp)# Ω
-        # tk_1000 = np.array(tk_1000) #(1/k) 1000 over temperature in K.
 
     elif exists == True: # Importing the dataframe with the lists if it does already exist and initializing lists
         df = pd.read_excel(excel_file,sheet_name)
@@ -413,9 +409,9 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
     ' --- DRT peak fitting and plotting --- '
     if drt_peaks == True:
         # --- Checking to see if the peaks have already been fit:
-        if exists == True:
-            peak_data_sheet = 'Ahp_dual_DRT_peaks'
-            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+        # if exists == True:
+        peak_data_sheet = 'Ahp_dual_DRT_peaks'
+        df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
 
         # ----- plotting
         palette = sns.color_palette("coolwarm", as_cmap=True)

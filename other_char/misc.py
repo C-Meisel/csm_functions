@@ -13,6 +13,10 @@ import os
 import cmasher as cmr
 import numpy as np
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+import seaborn as sns
+from matplotlib.ticker import ScalarFormatter
+from matplotlib.table import Table
+
 
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "Mass Spec functions"
@@ -621,6 +625,7 @@ def haadf_eds_map(folder_loc:str):
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "Particle size analyzer (PSA) functions"
 'Functions to help me format and plot data from the PSA in Hill Hall 375'
+' Also Functions to format and plot data from the Microtrac Flowsync PSA in CK250'
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 def psa_d50(loc:str)->float: 
     '''
@@ -696,6 +701,169 @@ def psa_plots(list:list):
     ax.legend()
     plt.tight_layout()
     plt.show()
+
+def sync_psa_plot(data):
+    '''
+    Plots PSA data. Can plot one or multiple files
+
+    Parameters:
+    -----------
+    data, str or str list:
+        Path or list of paths to the PSA files to be plotted.
+        Accepts .csv files. 
+        data should be a string or a list of strings
+
+    Return --> None, but a plot is created and shown
+    '''
+
+    if isinstance(data, str): # If input_data is a single string, plot data from a single file
+        # - Looking for the blank line at the beginning of the file
+        with open(data, 'r', newline='') as file:
+            reader = csv.reader(file)
+            first_row = next(reader) # Read the first row (header or data)
+            first_cell = first_row[0]  # Extract the first cell
+
+            if first_cell == "":
+                adjust = 1
+            else:
+                adjust = 0
+
+        # - Extracting  Plotting Data
+        df = pd.read_csv(data, skiprows=69 + adjust, usecols = ['Size(um)', '%Chan']) # 
+        df = df.iloc[0:69]
+        x = df['Size(um)']
+        y = df['%Chan']
+
+        # - Extracting the D-50 value:
+        df_pcent = pd.read_csv(data, skiprows=24 + adjust, usecols = ['%Tile', 'Size(um)'],encoding='utf-8-sig', engine='python' )
+        d50 = float(df_pcent.iloc[4,1])
+
+        # - Extracting the peaks
+        df_peaks = pd.read_csv(data, skiprows=48 + adjust, usecols = ['Dia(um)', ' Volume  % ', 'Width'])
+        new_names = {'Dia(um)':'D50 (μm)', ' Volume  % ':'Volume (%)', 'Width':'Range (μm)'}
+        df_peaks = df_peaks.rename(columns=new_names)
+
+        index_of_first_nan = df_peaks.index[df_peaks.isna().any(axis=1)].tolist()[0]
+        sliced_df_peaks = df_peaks.loc[:index_of_first_nan - 1]
+
+        # -  Calculate the differences between adjacent x-values to set proper bin widths
+        diff_x = np.diff(x)
+        diff_x = np.append(diff_x,0) # 0 is added to keep the list the same size as the data list.
+
+        # - Figuring out the color of the chart:
+        fname = os.path.basename(data)
+        if "Elyte" in fname:
+            color = '#48443c'
+        elif "Anode" in fname:
+            color = '#6b7c6f'
+        else:
+            color = 'darkmagenta'
+
+        # - Create a bar plot using the calculated widths
+        fig, ax = plt.subplots()
+        ax.bar(x, y, width = diff_x, ec="k", align="edge",color=color)
+
+        # - Formatting
+        ax.set_xscale('log')
+        ax.set_xlim(0.1,1000)
+        ax.xaxis.set_major_formatter(ScalarFormatter())
+
+        ax.set_xlabel('Log Particle size (μm)', size= 'xx-large')
+        ax.set_ylabel('Channel (%)', size= 'xx-large')
+
+        # - Printing a table for the peaks
+        num_rows, num_cols = sliced_df_peaks.shape
+
+        bbox_height = 0.12 + num_rows * 0.06
+        
+        table = Table(ax, bbox=[0.56, 0.6, 0.44, bbox_height])
+        # Define the table properties
+        table.auto_set_font_size(False)
+        table.set_fontsize(16)
+        table.scale(1, 1.6)  # Adjust the table scaling as needed
+
+        # Add header rows with labels
+        for i in range(num_cols):
+            text = ''
+            if i == 1:
+                text = 'Peak Properties'
+            table.add_cell(0, i, 1, 1, text= text, loc='center', edgecolor='white')
+  
+        for i in range(num_cols):
+            table.add_cell(1, i, 1, 1, text=sliced_df_peaks.columns[i], loc='center', facecolor=color)
+            cell = table[1,i]
+            cell.get_text().set_color('white')
+
+        # Add data to the table iteratively
+        for i in range(num_rows):
+            for j in range(num_cols):
+                table.add_cell(i + 2, j, 1, 1, text=sliced_df_peaks.iloc[i, j], loc='center')
+
+        # Add the table to the plot
+        table.auto_set_column_width([i for i in range(num_cols)])  # Adjust column widths
+        ax.add_table(table)
+
+        # - Plotting the D50 line
+        ax.axvline(d50,color='#D2492A')
+        d50s = f'{d50}' #converting the int to a string so I can print it on the figure
+        ax.text(d50,y.max()*1.07,r'$D50 =$'+d50s+r' $\mu m$',ha='center',va='center',size='large',weight='bold',color='#D2492A')
+
+        # - Excessive formatting:
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.tick_params(axis='both', labelsize='x-large')
+
+        plt.tight_layout()
+        plt.show()
+
+    elif isinstance(data, list): # If input_data is a list of strings, plot data from multiple files
+        fig, ax = plt.subplots()
+
+        for file_path in data:
+            # --- Adjusting for the random blank row at the start of some files
+            with open(file_path, 'r', newline='') as file:
+                reader = csv.reader(file)
+                first_row = next(reader) # Read the first row (header or data)
+                first_cell = first_row[0]  # Extract the first cell
+
+                if first_cell == "":
+                    adjust = 1
+                else:
+                    adjust = 0
+            
+            # --- Extracting data
+            df = pd.read_csv(file_path, skiprows=69 + adjust, usecols = ['Size(um)', '%Chan']) # 
+            df = df.iloc[0:69]
+            x = df['Size(um)']
+            y = df['%Chan']
+
+            fname = os.path.basename(file_path)
+            parts = fname.split("_Data")
+            label = parts[0]
+
+            ax.semilogx(x, y, label=label, linewidth=2)
+
+               
+        # - Formatting
+        ax.set_xscale('log')
+        ax.set_xlim(0.1,1000)
+        ax.legend(fontsize='large')
+
+        ax.set_xlabel('Log Particle size (μm)', size= 'xx-large')
+        ax.set_ylabel('Channel (%)', size= 'xx-large')
+
+        # - Excessive formatting:
+        ax.xaxis.set_major_formatter(ScalarFormatter())
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.tick_params(axis='both', labelsize='x-large')
+
+        plt.tight_layout()
+        plt.show()
+
+    else:
+        raise ValueError("Input must be a string or a list of strings")
+
 
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 "LEIS"
