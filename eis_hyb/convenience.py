@@ -23,7 +23,7 @@ from matplotlib.colors import ListedColormap
 
 from hybdrt.models import DRT, elements, drtbase
 import hybdrt.plotting as hplt
-from hybdrt.fileload import read_eis, get_eis_tuple
+from hybdrt.fileload import read_eis, get_eis_tuple, get_timestamp
 
 from .plotting import plot_peis, plot_peiss, lnpo2
 from .fit_drt import dual_drt_save, pfrt_drt_save
@@ -31,12 +31,7 @@ from .data_formatting import peis_data
 
 
 ' List of Functions to Re-package:'
-# - fcstb OCV eis plots (May not need to change these 4)
-# - fcstb bias eis plots
-# - ecstb OCV eis plots
-# - ecstb bias eis plots
 # - May need to re-re-make functions to save the fits (then I will never re-package again lol)
-
 
 def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'best_id',
                           bayes_factors:bool = False, **peis_args):
@@ -185,7 +180,8 @@ def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'b
     print('Standard Ohmic',round(ohmic,3),'\u03A9cm\u00b2')
     print('Standard Rp',round(rp,3),'\u03A9cm\u00b2')
 
-def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None, peaks_to_fit:int = 'best_id', scale_prefix = ""):
+def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None, peaks_to_fit:int = 'best_id', scale_prefix = "",
+                       mark_peaks = True, legend = True, **kwargs):
     '''
     Quicker version to fit and plot a dual DRT spectra to EIS data.
     This function supports multiple graphs stacked on each other
@@ -205,7 +201,7 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
         if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
         if this is set to a integer, it fit the number of peaks set by that integer
     
-    Return --> None, but it plots and shows one or more plots
+    Return --> DRT instance, and it plots and shows one or more plots
     '''
     # -- Gathering data
     drt = DRT()
@@ -213,7 +209,6 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
     freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
     drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data prior_strength=None
     tau = drt.get_tau_eval(20)
-
 
     # -- Selecting the number of peaks for the drt distribution to have.
     if peaks_to_fit == 'best_id':
@@ -232,10 +227,11 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
         solo = True
         fig, ax = plt.subplots()
 
-    model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True, scale_prefix=scale_prefix)
+    model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=mark_peaks, scale_prefix=scale_prefix, **kwargs)
 
     # - Formatting
-    ax.legend(fontsize='x-large')
+    if legend == True:
+        ax.legend(fontsize='x-large')
     ax.xaxis.label.set_size('xx-large') 
     ax.yaxis.label.set_size('xx-large')
     ax.tick_params(axis='both', labelsize='x-large')
@@ -247,6 +243,8 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
     if solo == True:
         plt.tight_layout()
         plt.show()
+
+    return(drt)
 
 def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=True,
                  o2_dependence:bool=True, drt_peaks:bool=True, print_resistance_values:bool=False,
@@ -338,7 +336,7 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         O2_conc = np.array([]) # Concentration of Oxygen
         ohmic_asr = np.array([]) # ohm*cm^2
         rp_asr = np.array([]) # ohm*cm^2
-        df_tau_r = pd.DataFrame(columns = ['O2 Concentration (%)','Tau','Resistance']) #Initializing DataFrame to save temperature
+        df_tau_r = pd.DataFrame(columns = ['O2 Concentration (%)','Tau','Resistance']) #Initializing DataFrame to save DRT peak data
 
         for peis in O2_conc_list: #For loop to plot the DRT of all PO2 files (probably a more elegant way, but this works)
             # --- Finding and formatting
@@ -752,7 +750,6 @@ def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         plot.set(xscale='log')
         plt.tight_layout()
         plt.show()
-
 
 def fc_bias_plots_dual(folder_loc:str, area:float, eis:bool=True, drt:bool=True,
                         drt_peaks:bool=True, ncol:int=1, legend_loc:str='best',  
@@ -1475,8 +1472,12 @@ def excel_datasheet_exists(excel_file:str,sheet_name:str):
     If the excel file does exist, it will return a writer that can append to the excel file
     Will return whether or not the sheet_name exists in the excel file
 
-    param excel_file,str: The excel file to look for
-    param sheet_name,str: The name of the excel sheet to look for
+    Parameters:
+    ------------
+    excel_file, str:
+        The excel file to look for
+    sheet_name, str: 
+        The name of the excel sheet to look for
 
     Return --> appropriate writer, whether or not the excel sheet exists
     '''
@@ -1494,10 +1495,147 @@ def excel_datasheet_exists(excel_file:str,sheet_name:str):
     
     return exists,writer
 
+def append_drt_peaks(df_tau_r, drt, area, condition, peaks_to_fit = 'best_id'):
+    '''
+    Takes a DRT instance and extracts the peak data from it. It then appends this data to a dataframe (df_tau_r)
+    The dataframe is made outside the function
+    
+    Parameters:
+    ----------
+    df_tau_r, pandas dataframe:
+        dataframe to append the drt peak tau and resistance data to
+    drt, drt instance:
+        DRT instance
+    area, float:
+        The active cell area in cm^2
+    condition, float:
+        the condition of interest that the drt data was taken in
+    peaks_to_fit, str/int: (default: 'best_id')
+        Sets the number of discrete elements in the EIS to fit in the DRT
+        This basically just sets the amout of peaks to fit
+        if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
+        if this is set to a integer, it fit the number of peaks set by that integer
+    
+    Return --> None
+    '''
+    # --- obtain time constants from inverters and Appending tau and r for each peak into df_tau_r
+    if peaks_to_fit == 'best_id':
+        best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+        peaks = best_id
 
+    else: peaks = peaks_to_fit
+    # - Selecting the model. The number of peaks to plot and fit
+    model_dict = drt.get_candidate(peaks,'discrete')
+    model = model_dict['model']
+    tau = model_dict['peak_tau'] # τ/s
 
+    # - Obtaining the resistance value for each peak
+    r_list = []
+    for i in range(1,int(peaks)+1):
+        peak = 'R_HN'+str(i)
+        resistance = model.parameter_dict[peak]
+        r_list.append(resistance)
 
+    r = np.array(r_list) * area # Ω*cm2
 
+    i = 0
+    for τ in tau:
+        df_tau_r.loc[len(df_tau_r.index)] = [condition, τ, r[i]]
+        i = i+1
+
+def rp_ohmic_to_excel(cell_name, folder_loc, ohmic_asr, rp_asr, sheet_name, condition, condition_label, overwrite = False):
+    '''
+    Takes in ohmic and rp data calculated from EIS spectra and writes it to an excel file
+    The data comes in as lists, is zipped to a dataframe, and is written to an excel file
+
+    Parameters:
+    ----------
+    cell_name, str:
+        Name of the cell that the data was taken from
+    folder_loc, str:
+        The folder location of the EIS files (path to directory)
+    ohmic_asr, list:
+        list of the ohmic area specific resistance (asr) values for the cell
+        list of floats
+    rp_asr, list:
+        list of the polarization (Rp) area specific resistance (asr) values for the cell
+        list of floats
+    sheet_name, str: 
+        The name for the excel sheet that is about to be created
+    condition, list:
+        list of the condition that is varying during testing
+        could be time, bias, PO2, etc...
+        the condition values will match up with the Rp and ohmic values
+        list of floats
+    condition_label, str:
+        The name of the column in the dataframe containing the condition data
+    overwrite, bool: (default = False)
+        If the data already exists in the cell excel file, then this will overwrite that data with
+        the data currently being fit when overwrite=True.
+
+    Return --> None, but the data is written to an excel file
+    '''
+    
+    # >>>>>>>>>>>> Creating DataFrames and adding excel data sheets (or creating the file if need be)'
+    excel_name = '_' + cell_name + '_Data.xlsx'
+    excel_file = os.path.join(folder_loc,excel_name)
+    exists = False
+
+    exists, writer = excel_datasheet_exists(excel_file,sheet_name)
+
+    if exists == False:
+        df = pd.DataFrame(list(zip(condition,ohmic_asr,rp_asr)),
+            columns =[condition_label,'Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
+        df.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
+        writer.close() # Close the Pandas Excel writer and output the Excel file.
+
+    elif exists == True and overwrite == True:
+        df = pd.DataFrame(list(zip(condition,ohmic_asr,rp_asr)),
+            columns =[condition_label,'Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
+        
+        book = load_workbook(excel_file)
+        writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+        df.to_excel(writer, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
+        writer.close() # Close the Pandas Excel writer and output the Excel file.
+
+def df_tau_r_to_excel(cell_name, folder_loc, df_tau_r,sheet_name, overwrite = False):
+    '''
+    Takes in the DRT peak fit data and writes it to an excel file
+    The data comes in as a dataframe and is written to an excel file
+
+    Parameters:
+    ----------
+    cell_name, str:
+        Name of the cell that the data was taken from
+    folder_loc, str:
+        The folder location of the EIS files (path to directory)
+    df_tau_r, pandas df:
+        dataframe containing the tau, and resistance data for each DRT peak for each condition
+    sheet_name, str: 
+        The name for the excel sheet that is about to be created
+    overwrite, bool: (default = False)
+        If the data already exists in the cell excel file, then this will overwrite that data with
+        the data currently being fit when overwrite=True.
+
+    Return --> None, but the data is written to an excel file
+    '''
+
+    # ------- Appending the Peak_fit data to an excel file
+    excel_name = '_' + cell_name + '_Data.xlsx'
+    excel_file = os.path.join(folder_loc,excel_name)
+    exists_peaks = False
+
+    exists_peaks, writer_peaks = excel_datasheet_exists(excel_file,sheet_name)
+
+    if exists_peaks == False: # Make the excel data list
+        df_tau_r.to_excel(writer_peaks, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
+        writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
+
+    elif exists_peaks == True and overwrite == True:
+        book = load_workbook(excel_file)
+        writer_peaks = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+        df_tau_r.to_excel(writer_peaks, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
+        writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
 
 
 
