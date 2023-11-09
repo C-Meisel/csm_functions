@@ -1078,7 +1078,7 @@ def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
             drt = DRT()
             df = read_eis(loc)
             freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
-            drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+            drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None), nonneg=False) # Fit the data
             
             # drt.plot_distribution(mark_peaks=True, label=label, ax=ax, area=area)
             tau = drt.get_tau_eval(20)

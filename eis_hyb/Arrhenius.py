@@ -119,7 +119,7 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         if plot_drt == True:
             fig, ax = plt.subplots()
             # - Setting COlormap
-            cmap = plt.cm.get_cmap('coolwarm') #cmr.redshift
+            cmap = plt.cm.get_cmap('coolwarm_r') #cmr.redshift
             color_space = np.linspace(0,1,len(ahp_eis)) # array from 0-1 for the colormap for plotting
             c = 0 # indicie of the color array
 
