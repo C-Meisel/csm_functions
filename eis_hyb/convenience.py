@@ -450,7 +450,9 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         if exists_peaks == False: # Make the excel data list
             df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
             writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
-        
+            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+
+
         elif exists_peaks == True and overwrite == False: #load the data into a DataFrame
             df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
 

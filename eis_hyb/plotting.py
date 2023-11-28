@@ -342,7 +342,7 @@ def plot_ivfc(area:float, loc:str):
     
     # - Calculating and printing max values onto the graph
     max_w = df_useful['W'].max() #finds maximum power density
-    max_v = df.loc[df.index[df['W'] == max_w],'V'].item() #finds voltage of max power density
+    max_v = df.loc[df.index[df['W'] == max_w],'V'].iloc[0] #finds voltage of max power density
     max_ws = f'{round(max_w,3)}' #sets float to a string
     max_vs = f'{round(max_v,3)}'
 
