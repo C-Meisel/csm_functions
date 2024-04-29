@@ -9,6 +9,7 @@ import pandas as pd
 import csv
 from shutil import copyfile
 import os
+import re
 
 def read_dta(loc:str):
     '''
@@ -33,6 +34,7 @@ def read_dta(loc:str):
 def get_ocv_data(loc:str):
     '''
     Reads a gamry .DTA file for an OCV scan and returns the OCV data
+    This will work for potentiostatic holds too.
      
     Parameters:
     -----------
@@ -111,14 +113,79 @@ def get_iv_data(loc:str):
     txt = read_dta(loc) # Reading the Gamry .DTA file and storing as a string
 
     # --- Finding the start of the data (Also informed by Hybrid_drt)
-    data_flag = txt.find('CURVE')
+    try:
+        data_flag = txt.find('CURVE')
+        metadata = txt[:data_flag] # figure out where the metadata ends
+        skiprows = len(metadata.split('\n')) + 1 # Finding how many rows to skip before the data starts
+        df = pd.read_csv(loc,sep='\t',skiprows=skiprows,encoding='latin1',engine='python')
+
+    except pd.errors.EmptyDataError: # If the test stand breaks during the test and it is aborted...
+        data_flag = txt.find('EXPERIMENTABORTED')
+        metadata = txt[:data_flag] # figure out where the metadata ends
+        skiprows = len(metadata.split('\n')) + 2 # Finding how many rows to skip before the data starts
+        df = pd.read_csv(loc,sep='\t',skiprows=skiprows,encoding='latin1',engine='python')
+        print(df)
+
+    return(df)
+ 
+def get_gs_data(loc:str):
+    '''
+    Reads a gamry .DTA file for a polarization (IV) curve
+    and returns the data table as a dataframe.
+
+    This function also works for galvanostatic holds
+     
+    Parameters:
+    ------------
+    loc, str: location of gamry .dta file to get the IV data
+
+    return --> dataframe with the IV data 
+    '''
+    txt = read_dta(loc) # Reading the Gamry .DTA file and storing as a string
+    
+    # with txt as file:
+    #     lines = file.readlines()
+
+    # for line in lines:
+    #     if line.startswith('CURVE') and not 'OCV CURVE' in line:
+    #         print(line)
+    #         break
+    # --- Finding the start of the data (Also informed by Hybrid_drt)
+    data_flag = txt.find('COMPLIANCEVOLTAGE')
     metadata = txt[:data_flag] # figure out where the metadata ends
-    skiprows = len(metadata.split('\n')) + 1 # Finding how many rows to skip before the data starts
+    skiprows = len(metadata.split('\n')) + 2 # Finding how many rows to skip before the data starts
 
     df = pd.read_csv(loc,sep='\t',skiprows=skiprows,encoding='latin1',engine='python')
-    
     return(df)
 
+def get_iv_ocv(loc:str):
+    '''
+    Reads a gamry .DTA file for a polarization (IV) curve
+    and returns the ocv reading for the iv curve
+     
+    Parameters:
+    ------------
+    loc, str: location of gamry .dta file to get the IV data
+
+    return --> float: OCV
+    '''
+    # Read the text file
+    with open(loc, 'r') as file:
+        text = file.read()
+
+    # Define a regular expression pattern to match the line containing OCV
+    pattern = r'EOC\s+QUANT\s+(\d+\.\d+)\s+Open Circuit\(V\)'
+
+    # Search for the OCV value using the pattern
+    match = re.search(pattern, text)
+
+    # Check if a match was found
+    if match:
+        ocv_value = float(match.group(1))
+    else:
+        print("OCV Value not found in the text.")
+    
+    return(ocv_value)
 
 
 ' --- Older Data Functions '
@@ -240,6 +307,8 @@ def get_init_ocv(folder_loc:str, fc:bool = True) -> float:
     if fc == True:
         for file in files:
             if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1):
+            # if file.find('Deg__#4.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1): # Use for Cell 55
+            # if file.find('Deg10_2__#1.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1): # Use for Cell 44 Continuation (Switch Deg10_3__1 to Deg10_2__1 for the inbetween sect)
                 file1 = os.path.join(folder_loc,file)
 
     if fc == False:
@@ -287,6 +356,9 @@ def get_init_v(folder_loc:str, fc:bool = True) -> float:
     if fc == True:
         for file in files:
             if file.find('Deg__#1.DTA')!=-1 and file.find('GS')!=-1:
+            # if file.find('Deg10__#4.DTA')!=-1 and file.find('GS')!=-1: # Use for Cell 55
+            # if file.find('Deg10_4__#1.DTA')!=-1 and file.find('GS')!=-1: # Use for Cell 44 Continuation (Switch Deg10_3 to Deg10_4 for the inbetween sect)
+
                 file1 = os.path.join(folder_loc,file)
 
     if fc == False:

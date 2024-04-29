@@ -65,11 +65,9 @@ def ocv_data(loc:str):
     for row in file: #searches first column of each row in csv for "CURVE", then adds 1. This gives the right amount of rows to skip
         if row[0] == 'CURVE':
             skip = file.line_num+1
-            print(skip)
             break
         if row[0] == 'READ VOLTAGE': #For whatever reason the DTA files are different if the data is aborted
             skip = file.line_num+1
-            print(skip)
             break
     df = pd.read_csv(loc_csv,sep='\t',skiprows=skip,encoding='latin1')
     df_useful = df[['s','V']]

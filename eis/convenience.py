@@ -657,13 +657,22 @@ def ec_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True,
     The .DTA EIS files are taken during a Gamry sequence that I use for testing the cell performance under
     various biases
 
-    param folder_loc, str: The folder location of the EIS files (path to directory)
-    param fit_path, str: The folder location of the DRT fits (path to directory)
-    param area, float: The active cell area in cm^2
-    param eis, bool: If True, the EIS spectra are plotted
-    param drt, bool: If True, the DRT spectra are plotted
-    param ncol, int: The number of columns in the legend
-    param legend_loc, str: The location of the legend (default = 'best'). The other option is to put 
+    Parameters:
+    ------------
+    folder_loc, str:
+        The folder location of the EIS files (path to directory)
+    fit_path, str:
+        The folder location of the DRT fits (path to directory)
+    area, float:
+        The active cell area in cm^2
+    eis, bool:
+        If True, the EIS spectra are plotted
+    drt, bool:
+        If True, the DRT spectra are plotted
+    ncol, int:
+        The number of columns in the legend
+    legend_loc, str: 
+        The location of the legend (default = 'best'). The other option is to put 
         the legend outside the figure and this is done by setting legend_loc = 'outside'
 
     Return --> None but one or more plots are created and shown
@@ -692,6 +701,8 @@ def ec_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True,
 
             # --- Plotting
             plot_peiss(area,nyquist_name,loc,ncol=ncol,legend_loc=legend_loc)
+        
+        plt.dpi=300
         plt.show()
 
     'Plotting DRT'
@@ -717,8 +728,27 @@ def ec_bias_plots(folder_loc:str, fit_path:str, area:float, eis:bool=True,
             bias_array = np.append(bias_array,float(bias))
             ohmic_asr = np.append(ohmic_asr,inv.R_inf*area)
             rp_asr = np.append(rp_asr,inv.predict_Rp()*area)
-            bp.plot_distribution(None,inv,ax,unit_scale='',label = label)
-        ax.legend()
+            bp.plot_distribution(None,inv,ax,unit_scale='',label = label,freq_axis=False)
+        
+        
+        # - Excessive Formatting
+        title_font = 'xx=large'
+        tick_font = 'x-large'
+        ax.set_xlabel(r'$\tau$ (s)',fontsize='xx-large')
+        ax.set_ylabel(r'$\gamma$ (m$\Omega$ $\cdot$ cm$^2$)',fontsize='xx-large')
+        ax.tick_params(axis='both', labelsize='x-large')
+        # freq_ax = fig.axes[-1]
+        def freq2tau(x):
+            return 1 / (2 * np.pi * x)
+        axf = ax.secondary_xaxis('top', functions=(freq2tau, freq2tau))
+        axf.set_xlabel('$f$ (Hz)',fontsize='x-large')
+        axf.tick_params(axis='x', labelsize='x-large')
+        ax.spines['right'].set_visible(False)
+        ax.legend(handlelength = 1,handletextpad=0.2,fontsize= 'x-large',labelspacing=0.35)
+
+        plt.dpi=300
+
+        plt.tight_layout()
         plt.show()
 
         'Creating a DataFrame and adding an excel data sheet (or creating the file if need be)'

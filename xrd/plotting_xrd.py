@@ -9,7 +9,7 @@ import csv
 import numpy as np
 
 import csm_functions
-from  eis_hyb.data_formatting import read_dta
+# from  eis_hyb.data_formatting import read_dta
 
 def xrd_format(location: str)->pd.DataFrame:
     '''

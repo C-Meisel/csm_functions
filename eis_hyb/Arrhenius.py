@@ -22,12 +22,13 @@ import hybdrt.plotting as hplt
 from hybdrt.fileload import read_eis, get_eis_tuple
 
 from .plotting import plot_peiss, plot_ivfcs
-from .convenience import excel_datasheet_exists
+from .convenience import excel_datasheet_exists, append_drt_peaks
 from .data_formatting import peis_data
 
 def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = True, plot_drt:bool = True,
                     drt_peaks:bool = True, thickness:float = 0, rp_plt_type:str = 'ln', re_fit:bool = False,
-                    legend_loc:str = 'outside', drtp_leg_loc_ots:bool = False, reverse = False, peaks_to_fit:int = 'best_id'):
+                    legend_loc:str = 'outside', drtp_leg_loc_ots:bool = False, reverse = False, peaks_to_fit:int = 'best_id',
+                    drt_model:str='dual'):
     '''
     Searches though the folder_loc and separates out the EIS files to be used to plot the arrhenius data.
     The EIS files are matched to their corresponding temperature input from temps.
@@ -72,7 +73,7 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         drt peak legend location outside the figure
         If True, the legend for the DRT peaks will be placed outside the figure.
     reverse, bool: optional (default: False)
-        If the arrhenius plot was taken in reverse order i.e 500-625C (like my older cells), then set this to true
+        If the arrhenius plot was taken in reverse order i.e 500-625C (like the older and newer), then set this to true
         This reverses the direction of the cmap to keep the lower temps blue and higher temps red on the DRT and Nyquist plots
         To reiterate if the arrhenisu plot was taken from lowest temp to highest set this to true
     peaks_to_fit, str/int: (default: 'best_id')
@@ -80,7 +81,11 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         This basically just sets the amout of peaks to fit
         if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
         if this is set to a integer, it fit the number of peaks set by that integer
-
+    drt_model, str: (default = dual)
+        which type of drt used to analyze the data
+        if drt = 'dual' the dual regression model is used to fit the data
+        if drt = 'drtdop' then the drtdop model is used to fit the data
+        
     Return --> None but 2-5 plots are crated and shown, the EIS data gets fit and saved, and the 
     data to make the Arrhenius plots is saved in the cell data excel file (if not already there)
     '''
@@ -89,8 +94,12 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
     ahp_eis = [file for file in os.listdir(folder_loc) if file.endswith('.DTA') and file.find('_Ahp__#')!=-1 and file.find('PEIS')!=-1] #Makes a list of all ahp
     cell_name = os.path.basename(ahp_eis[0]).split("_", 1)[0]
     ahp_eis = sorted(ahp_eis, key=lambda x: int((x[x.find('Ahp__#')+len('Ahp__#'):x.rfind('.DTA')]))) #Sorts numerically by eis number (temperature)
+    
     if reverse == True:
         ahp_eis.reverse()
+        temps.reverse()
+
+    if reverse == False:
         temps.reverse()
 
     ' --- Gathering information to make the Arrhenius Plots and saving it in an excel file sheet for this cell --- '
@@ -126,62 +135,88 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         for c,eis in enumerate(ahp_eis): # Dual DRT Inverting all ahp EIS data
             # - Extracting the temperature data
             temp = str(temps[c])
+            label = temp + '\u00B0C'
 
-            # ----- Inverting the EIS data
+            # ----- Creating DRT instance and prepping EIS for inversion
             full_loc = os.path.join(folder_loc,eis)
             drt = DRT()
             df = read_eis(full_loc)
             freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
-            drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+
+            if drt_model == 'dual':
+                drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+                
+                tau = drt.get_tau_eval(20)
+
+                # - Selecting the number of peaks for the drt distribution to have.
+                if peaks_to_fit == 'best_id':
+                    best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+                    peaks = best_id
+
+                else: peaks = peaks_to_fit
+
+                # - Selecting the model. The number of peaks to plot and fit
+                model_dict = drt.get_candidate(peaks,'discrete')
+                model = model_dict['model']            
+
+                # ----- Setting up DRT plot if desired
+                if plot_drt == True:
+                    label = label
+                    color = cmap(color_space[c])
+                    mark_peaks_kw = {'color':color,'find_peaks_kw':{'method':'prob'}}
+
+                    model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True,color=color,mark_peaks_kw=mark_peaks_kw)
+                    c = c + 1
+
+                # --- obtain time constants from inverters and Appending tau and r for each peak into df_tau_r
+                tau = model_dict['peak_tau'] # τ/s
             
-            label = temp + '\u00B0C'
-            tau = drt.get_tau_eval(20)
+            elif drt_model == 'drtdop':
+                # -- Initializing drt instance and dop model
+                drt.fit_dop=True
 
-            # - Selecting the number of peaks for the drt distribution to have.
-            if peaks_to_fit == 'best_id':
-                best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
-                peaks = best_id
+                # -- Fitting DRT
+                drt.fit_eis(freq, z)    
+                tau = drt.get_tau_eval(20)
 
-            else: peaks = peaks_to_fit
+                # -- Plotting
+                if plot_drt == True:
+                    color = cmap(color_space[c])
+                    mark_peaks_kw = {'color':color}
+                    drt.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True,
+                                    scale_prefix="", c=color, plot_ci=False, mark_peaks_kw=mark_peaks_kw)
+                    
+            else:
+                print('In order to plot DRT, it must be fit with the dual or the drtdop model') 
+                print('Set drt= \'dual\' or to \'drtdop\'') 
 
-            # - Selecting the model. The number of peaks to plot and fit
-            model_dict = drt.get_candidate(peaks,'discrete')
-            model = model_dict['model']
 
             # ----- Extracting and calculating resistance data
             ohmic = np.append(ohmic,drt.predict_r_inf())
             rp = np.append(rp,drt.predict_r_p())
             tk_1000 = np.append(tk_1000, 1000/(int(temp)+273))
+            append_drt_peaks(df_tau_r, drt, area, temp, peaks_to_fit = peaks_to_fit,
+                             drt_model = drt_model)
 
-            # ----- Setting up DRT plot if desired
-            if plot_drt == True:
-                label = label
-                color = cmap(color_space[c])
-                # marker_dict = {'markerfacecolor': color}
-                model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True,color=color)
-                c = c + 1
-
-            # --- obtain time constants from inverters and Appending tau and r for each peak into df_tau_r
-            tau = model_dict['peak_tau'] # τ/s
-
-            # - Obtaining the resistance value for each peak
-            r_list = []
-            for i in range(1,int(peaks)+1):
-                peak = 'R_HN'+str(i)
-                resistance = model.parameter_dict[peak]
-                r_list.append(resistance)
-
-            r = np.array(r_list) * area # Ω*cm2
-
-            for i, τ in enumerate(tau):
-                df_tau_r.loc[len(df_tau_r.index)] = [temp, τ, r[i]]
 
         if plot_drt == True:
             # - Formatting and showing the data
             ax.legend(fontsize='x-large')
+
+            # - Adding Frequency scale:
+            def Tau_to_Frequency(T):
+                return 1 / (2 * np.pi * T)
+
+            freq_ax = ax.secondary_xaxis('top', functions=(Tau_to_Frequency, Tau_to_Frequency))
+            
+            # - Excessive formatting
             ax.xaxis.label.set_size('xx-large') 
             ax.yaxis.label.set_size('xx-large')
             ax.tick_params(axis='both', labelsize='x-large')
+            ax.spines['right'].set_visible(False)
+
+            freq_ax.set_xlabel('$f$ (Hz)',size='xx-large')
+            freq_ax.tick_params(axis='x',labelsize='x-large')
             
             plt.tight_layout()
             plt.show()
@@ -217,7 +252,7 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
             df_table = pd.read_excel(excel_file,sheet_name)
 
         ' >>>>>>>>>> Appending the Peak_fit data to an excel file '
-        peak_data_sheet = 'Ahp_dual_DRT_peaks'
+        peak_data_sheet = 'Ahp_' + drt_model + '_DRT_peaks'
         exists_peaks = False
 
         exists_peaks, writer_peaks = excel_datasheet_exists(excel_file,peak_data_sheet)
@@ -410,7 +445,7 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
     if drt_peaks == True:
         # --- Checking to see if the peaks have already been fit:
         # if exists == True:
-        peak_data_sheet = 'Ahp_dual_DRT_peaks'
+        peak_data_sheet = 'Ahp_' + drt_model + '_DRT_peaks'
         df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
 
         # ----- plotting
@@ -473,6 +508,7 @@ def arrhenius_iv_curves(folder_loc:str, area:float, temps:list, reverse:bool=Fal
 
     # --- Merging curves and conditions
     curves_conditions = tuple(zip(area_list,str_temps,ahp_iv_loc))
+
     if reverse == False:
         cmap = plt.cm.get_cmap('coolwarm_r')
     if reverse == True:
@@ -481,7 +517,8 @@ def arrhenius_iv_curves(folder_loc:str, area:float, temps:list, reverse:bool=Fal
     plot_ivfcs(curves_conditions,print_Wmax=True,cmap=cmap)
 
 def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps:np.array = None,
-                        rmv_temp_r:np.array = None, rmv_temp_l:np.array = None):
+                        rmv_temp_r:np.array = None, rmv_temp_l:np.array = None, drt_model:str = 'dual',
+                        print_c:bool = True):
     '''
     This function is meant to linearly fit a single DRT peak across a temperature range.
     After you use the arrhenius_plots function to plot the DRT peaks a cluster of peaks can be fit
@@ -504,6 +541,12 @@ def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps
     rmv_temp_l, np.array: (default = None)
         If two clusters overlap, specify the temperatures where there are overlap and this will remove
         the peaks with lower time constants (higher frequency, to the left) from the fit.
+    drt_model, str: (default = dual)
+        which type of drt used to analyze the data
+        if drt = 'dual' the dual regression model is used to fit the data
+        if drt = 'drtdop' then the drtdop model is used to fit the data
+    print_c , bool: (default = False)
+        if desired, the capacitance of each peak is calculated and fit
 
     Returns --> none, but a plot of the DRT peak fit and the activation energy is calculated and printed on the plot
     '''
@@ -514,7 +557,9 @@ def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps
             data_file = os.path.join(folder_loc,file)
             break
 
-    data = pd.read_excel(data_file, 'Ahp_dual_DRT_peaks')
+    sheet_name = 'Ahp_' + drt_model + '_DRT_peaks'
+
+    data = pd.read_excel(data_file, sheet_name)
     data = data[(data['Tau']>tau_low) & (data['Tau']<tau_high)]
 
     # ----- If desired, only plotting certain temperatures
@@ -538,7 +583,8 @@ def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps
                 sys.exit(1)
 
             # - remove all higher tau values
-            data = data[data['Tau']!=lowest_tau]
+            # data = data[data['Tau']!=lowest_tau]
+            data = data[~((data['Temperature (C)'] == temp) & (data['Tau'] == lowest_tau))]
 
     # ----- removing a duplicate if there is overlap between clusters to the right (remove points to the right)
     if rmv_temp_r is not None:
@@ -557,8 +603,9 @@ def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps
                 sys.exit(1)
 
             # - remove all higher tau values
-            data = data[data['Tau']!=highest_tau]
-    
+            # data = data[data['Tau']!=highest_tau]
+            data = data[~((data['Temperature (C)'] == temp) & (data['Tau'] == highest_tau))]
+
     # ----- Finding low and high Tau values of the values plotted
     min_tau = data['Tau'].min()
     max_tau = data['Tau'].max()
@@ -571,6 +618,11 @@ def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps
     ah_temps = np.array(temps)
     ah_temps = 1000/(ah_temps + 273)
 
+    # --- If printing capacitance is desired
+    data['Capacitance (F/cm^2)'] = data['Tau']/data['Resistance']
+    if print_c == True:
+        print(data)
+        
     # ----- Plotting
     x = ah_temps
     y = ah_rp
@@ -611,12 +663,22 @@ def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps
     k = 8.617*10**-5 #boltzmanns constant in Ev/K
     Eact = round(m*k*(1000),3) # this gives the activation energy in eV
     
-    # - Printing figure text
+    # ----- Printing figure text
+    # - Activation Energy
     Eacts = f'{Eact}'
     fig.text(0.72,0.33,r'$E_a$ ='+Eacts+'eV',fontsize = text_fontsize)
+    # - Time Constants
     tau_lows = f'{min_tau:.2e}'
     tau_highs = f'{max_tau:.2e}'
-    fig.text(0.19,0.81,'DRT peak between '+tau_lows+'(\u03C4/s) and '+tau_highs+'(\u03C4/s)',fontsize = tick_fontsize)
+    fig.text(0.18,0.81,'DRT peak between '+tau_lows+'(\u03C4/s) and '+tau_highs+'(\u03C4/s)',fontsize = tick_fontsize)
+    # - Capacitances
+    avg_c = data['Capacitance (F/cm^2)'].mean()
+    std_c = data['Capacitance (F/cm^2)'].std()
+    avg_cs = f'{avg_c:.2e}'
+    std_cs = f'{std_c:.2e}'
+    fig.text(0.18,0.76,'Avg C: '+avg_cs+r'(F/cm$^2$) +/- '+std_cs,fontsize = tick_fontsize)
+
+
     plt.tight_layout()
 
     plt.show()

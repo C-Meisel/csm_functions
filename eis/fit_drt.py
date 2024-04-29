@@ -111,7 +111,6 @@ def deg_eis_fitter(folder_loc:str, jar_bias:str, jar_ocv:str, bias_amount:str='n
         loc_eis = os.path.join(folder_loc,eis[0]) #creates the full location of desired the EIS spectra
         fit_path = jar_bias
         fit_name = eis[1]+'.pkl'
-        print(fit_name)
         
         pickle_jar = os.listdir(jar_bias)
 

@@ -215,7 +215,7 @@ def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
     elif legend_loc == 'outside':
         plt.legend(loc='upper left',bbox_to_anchor=(1,1),ncol=ncol)
     else: #this else statement is a default if one of the earlier statements causes an error
-        plt.legend(loc='upper left',bbox_to_anchor=(1,1),ncol=ncol)
+        plt.legend(loc='upper left',bbox_to_anchor=(1,1),ncol=ncol,handletextpad=0.1,fontsize= 'x-large',labelspacing=0.3)
 
     plt.tight_layout()
 
@@ -580,7 +580,6 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1:
             file1 = os.path.join(folder_loc,file)
 
-    print(first_file)
     if first_file == 'default': # if another file is specified as the first file, this file will be used to find T0
         T0_stamp = fl.get_timestamp(file1) # gets time stamp from first file
         t0 = T0_stamp.strftime("%s") # Converting Datetime to seconds from Epoch

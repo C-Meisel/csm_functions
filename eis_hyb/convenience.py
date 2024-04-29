@@ -19,6 +19,8 @@ import traceback # Used to look at errors
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib.colors import ListedColormap
+import matplotlib.ticker as ticker
+from matplotlib.ticker import FuncFormatter
 
 
 from hybdrt.models import DRT, elements, drtbase
@@ -27,13 +29,12 @@ from hybdrt.fileload import read_eis, get_eis_tuple, get_timestamp
 
 from .plotting import plot_peis, plot_peiss, lnpo2
 from .fit_drt import dual_drt_save, pfrt_drt_save
-from .data_formatting import peis_data
-
+from .data_formatting import peis_data, read_dta
 
 ' List of Functions to Re-package:'
 # - May need to re-re-make functions to save the fits (then I will never re-package again lol)
 
-def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'best_id',
+def standard_performance(loc:str, jar:str, area:float=0.5, dual_pfrt = True, peaks_to_fit:int = 'best_id',
                           bayes_factors:bool = False, **peis_args):
     '''
     Plots the EIS, dual-fits and plots the DRT, and prints the ohmic and polarization resistance for a cell
@@ -47,6 +48,9 @@ def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'b
         The location of the jar containing the map-fits (path to jar)
     area, float: 
         The active cell area in cm^2 (default = 0.5)
+    dual_pfrt, bool: (default = True)
+        If True, the dual regression model and the pfrt model are used to fit the EIS
+        If False, the drt-dop model is used to fit the EIS
     peis_args, dict: 
         Any additional arguments to be passed to the plot_peis function
     peaks_to_fit, str/int: (default: 'best_id')
@@ -62,123 +66,323 @@ def standard_performance(loc:str, jar:str, area:float=0.5, peaks_to_fit:int = 'b
     '''
     cell_name = os.path.basename(loc).split("_", 1)[0] #gets the name of the cell
 
-    # --- Fitting DRT, and making sure I am not re-fitting it if it has already been fit
-    pickle_jar = os.listdir(jar)
+    if dual_pfrt == True:
+        # --- Fitting DRT, and making sure I am not re-fitting it if it has already been fit
+        pickle_jar = os.listdir(jar)
 
-    # # - Dual fit check - Will place back in later
-    # dual_pickle_name = 0
-    # dual_fit_file = cell_name + '_standard_dual.pkl'
-    # for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
-    #     if dual_fit_file == pickle:
-    #         dual_pickle_name = dual_pickle_name + 1
-    #         break
+        # # - Dual fit check - Will place back in later
+        # dual_pickle_name = 0
+        # dual_fit_file = cell_name + '_standard_dual.pkl'
+        # for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+        #     if dual_fit_file == pickle:
+        #         dual_pickle_name = dual_pickle_name + 1
+        #         break
 
-    # if dual_pickle_name == 0:
-    #     dual_fit_name = dual_fit_file.removesuffix('_dual.pkl')
-    #     dual_drt_save(loc,jar,dual_fit_name)
+        # if dual_pickle_name == 0:
+        #     dual_fit_name = dual_fit_file.removesuffix('_dual.pkl')
+        #     dual_drt_save(loc,jar,dual_fit_name)
 
-    # - Dual fit
-    dual_drt = DRT() # Create a DRT instance
-    df = read_eis(loc)
-    freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
-    dual_drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None),) # Fit the data 
-    tau = dual_drt.get_tau_eval(20)
+        # - Dual fit
+        dual_drt = DRT() # Create a DRT instance
+        dual_drt.fit_dop = True
+        df = read_eis(loc)
+        freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+        dual_drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None),) # Fit the data 
+        tau = dual_drt.get_tau_eval(20)
 
-    # - Best Model to use to dual fit the DRT peaks:
-    if peaks_to_fit == 'best_id': 
-        best_id = dual_drt.get_best_candidate_id('discrete', criterion='lml-bic')
-        peaks = best_id
-        print(peaks)
+        # - Best Model to use to dual fit the DRT peaks:
+        if peaks_to_fit == 'best_id': 
+            best_id = dual_drt.get_best_candidate_id('discrete', criterion='lml-bic')
+            peaks = best_id
 
-    else: peaks = peaks_to_fit
+        else: peaks = peaks_to_fit
 
-    if bayes_factors == True:
-        # Plot normalized Bayes factors for each model
-        # This is taken directly from https://github.com/jdhuang-csm/hybrid-drt/blob/main/tutorials/Fitting%20EIS%20data.ipynb
-        # Credit to Dr. Jake Huang
-        fig, axes = plt.subplots(1, 3, figsize=(7, 2.25), sharex=True, sharey=True)
-        for i, crit in enumerate(['bic', 'lml', 'lml-bic']):
-            dual_drt.plot_norm_bayes_factors('discrete', criterion=crit, marker='o', ax=axes[i])
-            axes[i].set_title(crit.upper())
-        
-        if i > 0:
-            axes[i].set_ylabel('')
+        if bayes_factors == True:
+            # Plot normalized Bayes factors for each model
+            # This is taken directly from https://github.com/jdhuang-csm/hybrid-drt/blob/main/tutorials/Fitting%20EIS%20data.ipynb
+            # Credit to Dr. Jake Huang
+            fig, axes = plt.subplots(1, 3, figsize=(7, 2.25), sharex=True, sharey=True)
+            for i, crit in enumerate(['bic', 'lml', 'lml-bic']):
+                dual_drt.plot_norm_bayes_factors('discrete', criterion=crit, marker='o', ax=axes[i])
+                axes[i].set_title(crit.upper())
             
-        fig.tight_layout()
+            if i > 0:
+                axes[i].set_ylabel('')
+                
+            fig.tight_layout()
 
-    # - Setting the Dual Model    
-    model_dict = dual_drt.get_candidate(peaks,'discrete')
-    model = model_dict['model']
+        # - Setting the Dual Model    
+        model_dict = dual_drt.get_candidate(peaks,'discrete')
+        model = model_dict['model']
 
-    # - Probability function of relaxation time fit check
-    pfrt_pickle_name = 0
-    pfrt_fit_file = cell_name+'_standard_pfrt.pkl'
-    for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
-        if pfrt_fit_file == pickle:
-            pfrt_pickle_name = pfrt_pickle_name + 1
-            break
+        # - Probability function of relaxation time fit check
+        pfrt_pickle_name = 0
+        pfrt_fit_file = cell_name+'_standard_pfrt.pkl'
+        for pickle in pickle_jar: # checks to see if this has already been fit, if so name gets set to 1
+            if pfrt_fit_file == pickle:
+                pfrt_pickle_name = pfrt_pickle_name + 1
+                break
 
-    if pfrt_pickle_name == 0:
-        pfrt_fit_name = pfrt_fit_file.removesuffix('_pfrt.pkl')
-        pfrt_drt_save(loc,jar,pfrt_fit_name)
+        if pfrt_pickle_name == 0:
+            pfrt_fit_name = pfrt_fit_file.removesuffix('_pfrt.pkl')
+            pfrt_drt_save(loc,jar,pfrt_fit_name)
 
-    # ---- Loading DRT and plotting
-    # dual_drt = DRT()
-    pfrt_drt = DRT()
+        # ---- Loading DRT and plotting
+        # dual_drt = DRT()
+        pfrt_drt = DRT()
 
-    # dual_drt.load_attributes(os.path.join(jar,dual_fit_file))
-    pfrt_drt.load_attributes(os.path.join(jar,pfrt_fit_file))
+        # dual_drt.load_attributes(os.path.join(jar,dual_fit_file))
+        pfrt_drt.load_attributes(os.path.join(jar,pfrt_fit_file))
 
-    pfrt_basis_tau = pfrt_drt.basis_tau # gaining the basis tau of the pfrt fit
-    pf = pfrt_drt.predict_pfrt(pfrt_basis_tau) # saving the pfrt as an object
+        pfrt_basis_tau = pfrt_drt.basis_tau # gaining the basis tau of the pfrt fit
+        pf = pfrt_drt.predict_pfrt(pfrt_basis_tau) # saving the pfrt as an object
+        
+        # -- Plotting
+        fig, ax = plt.subplots()
+        m_blue = '#21314D'
+        m_orange = '#c1741d'
+        
+        # dual_drt.plot_distribution(c=m_blue, plot_ci=True, label='Dual DRT', return_line=True, ax=ax, area=area, mark_peaks = True)
+        # dual_drt.plot_candidate_distribution(best_id, 'discrete', label='Dual DRT',
+        #             c=m_blue, ax=ax, area=area)
+
+        model.plot_distribution(tau, ax=ax, area=area,label='Dual DRT', c=m_blue, mark_peaks=True)
+
+        ax2 = ax.twinx()
+        ax2.plot(pfrt_basis_tau, pf, label='PFRT', color=m_orange)
+        
+        # - Formating
+        ax2.set_ylabel('$p$',fontsize='xx-large',color=m_orange, labelpad = -10)
+        ax.legend(loc='upper left', fontsize = 'x-large', frameon = False, labelcolor = m_blue, handletextpad=0.3)
+        ax2.legend(fontsize = 'x-large', frameon = False, labelcolor = m_orange, handletextpad=0.3)
+
+        # - Excessive formatting
+        ax.xaxis.label.set_size('xx-large')
+        ax.tick_params(axis='x', labelsize='x-large')
+
+        ax.yaxis.label.set_size('xx-large')
+        ax.yaxis.label.set_color(m_blue)
+        ax.tick_params(axis='y', labelsize='x-large', labelcolor=m_blue, color=m_blue)
+        ax.spines['left'].set_color(m_blue) 
+
+        ax2.tick_params(axis='y', labelsize='x-large', labelcolor=m_orange, color=m_orange)
+        ax2.spines['right'].set_color(m_orange)
+        ax2.set_yticks([0,1])
+
+        ax2.spines['top'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+
+        plt.tight_layout()
+        plt.show()
+
+        # # ---- Plotting EIS
+        ohmic = dual_drt.predict_r_inf()*area
+        rp = dual_drt.predict_r_p()*area
+        ohmic_rtot = [round(float(ohmic),2),round(float(rp),2)+round(float(ohmic),2)]
+        plot_peis(area,loc,**peis_args) #Plots standard PEIS spectra
+
+    else:
+        # -- Initializing drt instance and dop model
+        drt = DRT()
+        drt.fit_dop=True
+        
+        # -- Gathering data
+        df = read_eis(loc)
+        freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+
+        # -- Fitting DRT
+        drt.fit_eis(freq, z)    
+        tau = drt.get_tau_eval(20)
     
-    # -- Plotting
-    fig, ax = plt.subplots()
-    m_blue = '#21314D'
-    m_orange = '#c1741d'
-    
-    # dual_drt.plot_distribution(c=m_blue, plot_ci=True, label='Dual DRT', return_line=True, ax=ax, area=area, mark_peaks = True)
-    # dual_drt.plot_candidate_distribution(best_id, 'discrete', label='Dual DRT',
-    #             c=m_blue, ax=ax, area=area)
+        # -- Plotting
+        fig, ax = plt.subplots()
+        m_blue = '#21314D'
+        m_orange = '#c1741d'
+        mark_peaks_kw = {'color':m_orange}
+        drt.plot_distribution(tau, ax=ax, area=area,label=cell_name,mark_peaks=True,
+                           scale_prefix="", c=m_blue, plot_ci=True,mark_peaks_kw=mark_peaks_kw)
+                
+        # - Adding Frequency scale:
+        def Tau_to_Frequency(T):
+            return 1 / (2 * np.pi * T)
 
-    model.plot_distribution(tau, ax=ax, area=area,label='Dual DRT', c=m_blue, mark_peaks=True)
+        freq_ax = ax.secondary_xaxis('top', functions=(Tau_to_Frequency, Tau_to_Frequency))
+        freq_ax.set_xlabel('$f$ (Hz)',size='xx-large')
+        freq_ax.tick_params(axis='x',labelsize='x-large')
 
-    ax2 = ax.twinx()
-    ax2.plot(pfrt_basis_tau, pf, label='PFRT', color=m_orange)
-    
-    # - Formating
-    ax2.set_ylabel('$p$',fontsize='xx-large',color=m_orange, labelpad = -10)
-    ax.legend(loc='upper left', fontsize = 'x-large', frameon = False, labelcolor = m_blue, handletextpad=0.3)
-    ax2.legend(fontsize = 'x-large', frameon = False, labelcolor = m_orange, handletextpad=0.3)
 
-    # - Excessive formatting
-    ax.xaxis.label.set_size('xx-large')
-    ax.tick_params(axis='x', labelsize='x-large')
+        # - Excessive formatting
+        ax.xaxis.label.set_size('xx-large')
+        ax.tick_params(axis='both', labelsize='x-large')
+        ax.yaxis.label.set_size('xx-large')
+        ax.spines['right'].set_visible(False)
 
-    ax.yaxis.label.set_size('xx-large')
-    ax.yaxis.label.set_color(m_blue)
-    ax.tick_params(axis='y', labelsize='x-large', labelcolor=m_blue, color=m_blue)
-    ax.spines['left'].set_color(m_blue) 
 
-    ax2.tick_params(axis='y', labelsize='x-large', labelcolor=m_orange, color=m_orange)
-    ax2.spines['right'].set_color(m_orange)
-    ax2.set_yticks([0,1])
-
-    ax2.spines['top'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-
-    plt.tight_layout()
-
-    plt.show()
-
-    # # ---- Plotting EIS
-    ohmic = dual_drt.predict_r_inf()*area
-    rp = dual_drt.predict_r_p()*area
-    ohmic_rtot = [round(float(ohmic),2),round(float(rp),2)+round(float(ohmic),2)]
-    plot_peis(area,loc,**peis_args) #Plots standard PEIS spectra
+        plt.tight_layout()
+        plt.show()
+        # # ---- Plotting EIS
+        ohmic = drt.predict_r_inf()*area
+        rp = drt.predict_r_p()*area
+        ohmic_rtot = [round(float(ohmic),2),round(float(rp),2)+round(float(ohmic),2)]
+        plot_peis(area,loc,**peis_args) #Plots standard PEIS spectra
 
     print('Standard Ohmic',round(ohmic,3),'\u03A9cm\u00b2')
     print('Standard Rp',round(rp,3),'\u03A9cm\u00b2')
+
+def plot_drtdop(loc:str, area:float, label:str = None, ax:plt.Axes = None, scale_prefix = "",
+                 mark_peaks = True, legend = True, print_resistance:bool=False,
+                 publication:bool = False, **kwargs):
+    '''
+    Quicker version to DRT-DOP fit and plot the ensuing DRT spectra.
+    This function supports multiple graphs stacked on each other
+    If one spectra is being plot, the fig and ax are made inside the function.
+
+    Parameters
+    ----------
+    loc, str: (path to a directory)
+        The location of the folder containing the EIS files (path to folder)
+    area, float:
+        The active cell area in cm^2
+    label, str: (default, None)
+        The name of the spectra. Will be displayed in the legend
+    ax, plt.Axes: (default: None)
+        matplotlib axes object. Used to plot the spectra. Needed to plot different spectra on the same figure
+    mark_peaks, bool: (default: True)
+        Whether or not to mark the peaks
+    legend, bool: (default: True)
+        Whether or not to show the legend
+    print_resistance, bool: (default: False)
+        whether or not to print the resistance values of the cell
+    publication, bool: (default = False)
+        If false the figure is formatted for a presentation
+        If true the figure is formatted to be a subfigure in a journal paper.
+        Setting publication to true increases all feature sizes
+    
+    Return --> DRT instance, and it plots and shows one or more plots
+    '''
+    # -- Initializing drt instance and dop model
+    drt = DRT()
+    drt.fit_dop=True
+    
+    # -- Gathering data
+    df = read_eis(loc)
+    freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+
+    # -- Fitting DRT
+    drt.fit_eis(freq, z)    
+    tau = drt.get_tau_eval(20)
+
+    # -- Plotting
+    solo = None 
+    if ax == None: # If only one spectra is being plot, create the fig and axis in the function
+        solo = True
+        fig, ax = plt.subplots()
+
+    drt.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=mark_peaks,
+                           scale_prefix=scale_prefix, **kwargs)
+
+    # - Adding Frequency scale:
+    def Tau_to_Frequency(T):
+        return 1 / (2 * np.pi * T)
+
+    # freq_ax = ax.secondary_xaxis('top', functions=(Tau_to_Frequency, Tau_to_Frequency))
+
+    # - Formatting
+    if legend == True:
+        ax.legend(fontsize='x-large')
+
+    # - Excessive formatting
+    if publication == False:
+        ax.xaxis.label.set_size('xx-large') 
+        ax.yaxis.label.set_size('xx-large')
+        ax.tick_params(axis='both', labelsize='x-large')
+        ax.spines['left'].set_linewidth(1.1)
+        ax.spines['bottom'].set_linewidth(1.1)
+        # - Frequency Ax
+        freq_ax = ax.secondary_xaxis('top', functions=(Tau_to_Frequency, Tau_to_Frequency))
+        freq_ax.set_xlabel('$f$ (Hz)',size='xx-large')
+        freq_ax.tick_params(axis='x',labelsize='x-large')
+
+    if publication == True:
+        label_size = 28
+        tick_size = label_size * 0.80
+        spine_width = 2
+        # - Main Axes
+        x_ticks = np.array([1e-7,1e-5,1e-3,1e-1,1e1])
+        ax.set_xticks(x_ticks)
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f'{y*1000:.0f}'))
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{int(np.log10(x))}'))
+        ax.set_ylabel(r'$\gamma$ (m$\Omega$ $\cdot$ cm$^2$)',fontsize=label_size)
+        ax.set_xlabel(r'log$_{10}\tau$',fontsize=label_size)
+        ax.tick_params(axis='both', labelsize=tick_size,width=2,length=6)
+        ax.spines['left'].set_linewidth(spine_width)
+        ax.spines['bottom'].set_linewidth(spine_width)
+        # - Frequency Ax
+        freq_ax = ax.secondary_xaxis('top', functions=(Tau_to_Frequency, Tau_to_Frequency))
+        freq_x_ticks = np.array([1e6,1e4,1e2,1e0,1e-2])
+        freq_ax.set_xticks(freq_x_ticks)
+        freq_ax.set_xlabel(r'$f$ (log$_{10}$Hz)',size=label_size,labelpad = 10)
+        freq_ax.tick_params(axis='x',labelsize=tick_size,width=2,length=6)
+        freq_ax.spines['top'].set_linewidth(spine_width)
+        freq_ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{int(np.log10(x))}'))
+
+
+
+    ax.spines['right'].set_visible(False)
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=4))
+
+
+    # - Printing resistance values if desired
+    if print_resistance == True:
+        ohmic = round(drt.predict_r_inf() * area,3)
+        rp = round(drt.predict_r_p() * area,3)
+        cell_name = os.path.basename(loc)
+
+        print(cell_name + ' Ohmic: ',ohmic,'\u03A9cm\u00b2')
+        print(cell_name + ' Rp: ',rp,'\u03A9cm\u00b2')
+
+    if solo == True:
+        plt.tight_layout()
+        plt.show()
+
+    return(drt)
+
+def plot_dop(loc:str, label:str = None, scale_prefix = "",
+                legend = True, **kwargs):
+    '''
+    Quicker version to use DRT-DOP to fit and plot the ensuing DOP spectra only.
+
+    Parameters
+    ----------
+    loc, str: (path to a directory)
+        The location of the folder containing the EIS files (path to folder)
+    label, str: (default, None)
+        The name of the spectra. Will be displayed in the legend
+    ax, plt.Axes: (default: None)
+        matplotlib axes object. Used to plot the spectra. Needed to plot different spectra on the same figure
+    legend, bool: (default: True)
+        Whether or not to show the legend
+    Return --> DRT instance, and it plots and shows one or more plots
+    '''
+    # -- Initializing drt instance and dop model
+    drt = DRT()
+    drt.fit_dop=True
+    
+    # -- Gathering data
+    df = read_eis(loc)
+    freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+
+    # -- Fitting DRT
+    drt.fit_eis(freq, z)    
+    tau = drt.get_tau_eval(20)
+
+    # -- Plotting
+    drt.plot_dop(normalize=True,normalize_tau=(tau.min(), tau.max()) ,label=label, **kwargs) # 
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    return(drt)
 
 def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None, peaks_to_fit:int = 'best_id', scale_prefix = "",
                        mark_peaks = True, legend = True, **kwargs):
@@ -193,6 +397,8 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
         The location of the folder containing the EIS files (path to folder)
     area, float:
         The active cell area in cm^2
+    label, str: (default, None)
+        The name of the spectra. Will be displayed in the legend
     ax, plt.Axes:
         matplotlib axes object. Used to plot the spectra. Needed to plot different spectra on the same figure
     peaks_to_fit, str/int: (default: 'best_id')
@@ -200,7 +406,11 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
         This basically just sets the amout of peaks to fit
         if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
         if this is set to a integer, it fit the number of peaks set by that integer
-    
+    mark_peaks, bool: (default: True)
+        Whether or not to mark the peaks
+    legend, bool: (default: True)
+        Whether or not to show the legend
+
     Return --> DRT instance, and it plots and shows one or more plots
     '''
     # -- Gathering data
@@ -248,8 +458,8 @@ def quick_dualdrt_plot(loc:str, area:float, label:str = None, ax:plt.Axes = None
 
 def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=True,
                  o2_dependence:bool=True, drt_peaks:bool=True, print_resistance_values:bool=False,
-                  ncol:int=1, legend_loc:str='best', flow100:bool = False, cut_inductance:bool = False,
-                  overwrite:bool = False, peaks_to_fit:int = 'best_id'):
+                  ncol:int=1, legend_loc:str='best', flow100:bool = False, flow200:bool = False, cut_inductance:bool = False,
+                  overwrite:bool = False, peaks_to_fit:int = 'best_id', drt_model:str = 'dual'):
     '''
     Searches through the folder_loc for all the changes in O2 concentration EIS files.
     Plots the EIS for each concentration in one plot if eis=True and the DRT of each concentration in another if drt=True
@@ -284,7 +494,7 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         the legend outside the figure and this is done by setting legend_loc = 'outside'
     flow100, bool: (default = False)
         Set this to true if the total flow rate for the PO2 test was 100 SCCM
-        for my older tests (cell 16 and below) my total flow rate was 100 SCCM
+        for my older tests (cell 16 and below) the total flow rate was 50 SCCM
         This just changes the list of strings to look for
     cut_inductance, bool: (default = False)
         If this is set to true, the negative inductance values at the beginning of the DataFrame
@@ -296,13 +506,25 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         This basically just sets the amout of peaks to fit
         if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
         if this is set to a integer, it fit the number of peaks set by that integer
+    drt_model, str: (default = dual)
+        which type of drt used to analyze the data
+        if drt = 'dual' the dual regression model is used to fit the data
+        if drt = 'drtdop' then the drtdop model is used to fit the data
 
     Return --> None, but it plots and shows one or more plots
     '''
     
     # +++++++++----- Finding and Dual DRT fitting the PO2 EIS
     dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
-    substring_list = ['PEIS_20O2.80Ar','PEIS_40O2.60Ar','PEIS_60O2.40Ar','PEIS_80O2.20Ar','PEIS_100O2.0Ar'] # setting variables to look for
+
+    if flow100 == True: # setting variables to look for
+        substring_list = ['PEIS_20O2.80Ar','PEIS_40O2.60Ar','PEIS_60O2.40Ar','PEIS_80O2.20Ar','PEIS_100O2.0Ar']
+    elif flow200 == True:
+        substring_list = ['PEIS_40O2.160Ar','PEIS_80O2.120Ar','PEIS_120O2.80Ar','PEIS_160O2.40Ar','PEIS_200O2.0Ar']
+    else:
+        substring_list = ['PEIS_10O2.40Ar','PEIS_20O2.30Ar','PEIS_30O2.20Ar','PEIS_40O2.10Ar','PEIS_50O2.0Ar']
+        # substring_list = ['10May21.1_PEIS_50air.3steam_50H2.0Ar_550C_2.DTA','PEIS_20O2.30Ar','PEIS_30O2.20Ar','PEIS_40O2.10Ar','PEIS_50O2.0Ar']
+
     O2_conc_list = [dta_files for dta_files in dta_files if any(sub in dta_files for sub in substring_list)] # placing all the changes in O2 eis files into a list
     cell_name = os.path.basename(fit_path).split("_", 2)[1]
 
@@ -316,6 +538,15 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
             # --- Finding and formatting
             loc = os.path.join(folder_loc, peis) # creates the full path to the file
             po2 = peis[peis.find('PEIS_')+len('PEIS_'):peis.rfind('O2')] #gets the pO2 from the file name
+
+            if flow200 == True:
+                po2_int = int(po2)
+                po2 = str(int(po2_int / 2))
+
+            if flow100 == False and flow200 == False:
+                po2_int = int(po2)
+                po2 = str(po2_int * 2)
+                nyquist_name = po2 + '% O$_2$'
 
             nyquist_name =  po2 + '% O$_2$'
 
@@ -342,6 +573,15 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
             # --- Finding and formatting
             loc = os.path.join(folder_loc, peis) # creates the full path to the file
             po2 = peis[peis.find('PEIS_')+len('PEIS_'):peis.rfind('O2')] #gets the pO2 from the file name
+            
+            if flow200 == True:
+                po2_int = int(po2)
+                po2 = str(int(po2_int / 2))
+
+            if flow100 == False and flow200 == False:
+                po2_int = int(po2)
+                po2 = str(po2_int * 2)
+                nyquist_name = po2 + '% O$_2$'
 
             nyquist_name =  po2 + '% O$_2$'
 
@@ -354,62 +594,68 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
             drt = DRT()
             df = read_eis(loc)
             freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
-            drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
-            label = po2+ '% O$_2$'
+            label = po2 + '% O$_2$'
+            
+            if drt_model == 'dual':
+                drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None)) # Fit the data
+                tau = drt.get_tau_eval(20)
 
-            # drt.plot_distribution(mark_peaks=True, label=label, ax=ax, area=area)
-            tau = drt.get_tau_eval(20)
+                # - Selecting the number of peaks for the drt distribution to have.
+                if peaks_to_fit == 'best_id':
+                    best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+                    peaks = best_id
 
-            # - Selecting the number of peaks for the drt distribution to have.
-            if peaks_to_fit == 'best_id':
-                best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
-                peaks = best_id
+                else: 
+                    peaks = peaks_to_fit
+            
+                # - Selecting the model. The number of peaks to plot and fit
+                model_dict = drt.get_candidate(peaks,'discrete')
+                model = model_dict['model']
 
-            else: peaks = peaks_to_fit
+                # --- Plotting
+                model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
 
-            # - Selecting the model. The number of peaks to plot and fit
-            model_dict = drt.get_candidate(peaks,'discrete')
-            model = model_dict['model']
+            elif drt_model == 'drtdop':
+                drt.fit_dop=True
+                drt.fit_eis(freq, z)
+                tau = drt.get_tau_eval(20)
 
-            # --- Plotting
-            label = po2+ '% O$_2$'
-            # drt.plot_candidate_distribution(peaks, 'discrete',mark_peaks=False, label=label, ax=ax, area=area)
-            model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
+                # - Plotting
+                drt.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True,
+                                    scale_prefix="", plot_ci=False)
+            else:
+                print('In order to plot DRT, it must be fit with the dual or the drtdop model') 
+                print('Set drt= \'dual\' or to \'drtdop\'') 
 
             # --- Appending resistance values to lists for lnPO2 plotting
             O2_conc = np.append(O2_conc,float(po2)/100)
             ohmic_asr = np.append(ohmic_asr,drt.predict_r_inf() * area)
             rp_asr = np.append(rp_asr,drt.predict_r_p() * area)
-
-            # --- obtain time constants from inverters and Appending tau and r for each peak into df_tau_r
-            tau = model_dict['peak_tau'] # τ/s
-
-            # - Obtaining the resistance value for each peak
-            r_list = []
-            for i in range(1,int(peaks)+1):
-                peak = 'R_HN'+str(i)
-                resistance = model.parameter_dict[peak]
-                r_list.append(resistance)
-
-            r = np.array(r_list) * area # Ω*cm2
-
-            i = 0
-            for τ in tau:
-                df_tau_r.loc[len(df_tau_r.index)] = [po2, τ, r[i]]
-                i = i+1
+            append_drt_peaks(df_tau_r, drt, area, po2, peaks_to_fit = peaks_to_fit,
+                             drt_model = drt_model)
 
             # --- Printing the resistance values if that is desired
             if print_resistance_values == True:
                 print(po2 + '% Oxygen Ohmic', round(drt.predict_r_inf() * area,3), '\u03A9 cm$^2^')
                 print(po2 + '% Oxygen Rp', round(drt.predict_r_p() * area,3), '\u03A9 cm$^2^')
         
-        # - Formatting
-        # print(df_tau_r)
+        # --- Formatting
+        # - Adding Frequency scale:
+        def Tau_to_Frequency(T):
+            return 1 / (2 * np.pi * T)
+
+        freq_ax = ax.secondary_xaxis('top', functions=(Tau_to_Frequency, Tau_to_Frequency))
+        
+        # - Excessive formatting
         ax.legend(fontsize='x-large')
         ax.xaxis.label.set_size('xx-large') 
         ax.yaxis.label.set_size('xx-large')
         ax.tick_params(axis='both', labelsize='x-large')
-        
+        ax.spines['right'].set_visible(False)
+
+        freq_ax.set_xlabel('$f$ (Hz)',size='xx-large')
+        freq_ax.tick_params(axis='x',labelsize='x-large')
+    
         plt.tight_layout()
         plt.show()
 
@@ -417,7 +663,7 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         # ------- Cell Resistance Data
         excel_name = '_' + cell_name + '_Data.xlsx'
         excel_file = os.path.join(folder_loc,excel_name)
-        sheet_name = 'pO2_dual'
+        sheet_name = 'pO2_' + drt_model
         exists = False
 
         exists, writer = excel_datasheet_exists(excel_file,sheet_name)
@@ -442,7 +688,7 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         # ------- Appending the Peak_fit data to an excel file
         excel_name = '_' + cell_name + '_Data.xlsx'
         excel_file = os.path.join(folder_loc,excel_name)
-        peak_data_sheet = 'pO2_dual_DRT_peaks'
+        peak_data_sheet = 'pO2_' + drt_model + '_DRT_peaks'
         exists_peaks = False
 
         exists_peaks, writer_peaks = excel_datasheet_exists(excel_file,peak_data_sheet)
@@ -451,7 +697,6 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
             df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
             writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
             df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
-
 
         elif exists_peaks == True and overwrite == False: #load the data into a DataFrame
             df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
@@ -996,7 +1241,8 @@ def fc_bias_plots_dual(folder_loc:str, area:float, eis:bool=True, drt:bool=True,
 
 def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
                 drt:bool=True, ncol:int=1, legend_loc:str='best',
-                overwrite:bool = False, peaks_to_fit:int = 'best_id'):
+                overwrite:bool = False, peaks_to_fit:int = 'best_id',
+                drt_model:str = 'dual',save_eis:str=None,save_drt:str=None):
     '''
     Finds all EIS files in the folder_loc taken during bias testing in Electrolysis cell mode and plots the EIS
     The corresponding DRT fits are located and also plotted if drt = True
@@ -1028,6 +1274,16 @@ def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
         This basically just sets the amount of peaks to fit
         if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
         if this is set to a integer, it fit the number of peaks set by that integer
+    drt_model, str: (default = dual)
+        which type of drt used to analyze the data
+        if drt = 'dual' the dual regression model is used to fit the data
+        if drt = 'drtdop' then the drtdop model is used to fit the data
+    save_eis, str: (default = None)
+        If this is not none, the EIS figure will be saved.
+        Save_eis is the file name and path of the saved file.
+    save_drt, str: (default = None)
+        If this is not none, , the DRT figure will be saved.
+        Save_drt is the file name and path of the saved file.
         
     Return --> None but one or more plots are created and shown
     '''
@@ -1055,6 +1311,12 @@ def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
 
             # --- Plotting
             plot_peiss(area,nyquist_name,loc,ncol=ncol,legend_loc=legend_loc)
+
+        # - Saving the figure
+        if save_eis is not None:
+            fmat_eis = save_eis.split('.', 1)[-1]
+            fig.savefig(save_eis, dpi=300, format=fmat_eis, bbox_inches='tight')  
+        
         plt.show()
 
     'Plotting DRT'
@@ -1076,28 +1338,36 @@ def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
 
             label =  str(bias) + 'V'
 
-            # --- Inverting the EIS data
-            drt = DRT()
-            df = read_eis(loc)
-            freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
-            drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None), nonneg=False) # Fit the data
+            if drt_model == 'dual':
+                # --- Inverting the EIS data
+                drt = DRT()
+                df = read_eis(loc)
+                freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+                drt.dual_fit_eis(freq, z, discrete_kw=dict(prior=True, prior_strength=None), nonneg=False) # Fit the data
+                
+                # drt.plot_distribution(mark_peaks=True, label=label, ax=ax, area=area)
+                tau = drt.get_tau_eval(20)
+
+                # - Selecting the number of peaks for the drt distribution to have.
+                if peaks_to_fit == 'best_id':
+                    best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+                    peaks = best_id
+
+                else: peaks = peaks_to_fit
+
+                # - Selecting the model. The number of peaks to plot and fit
+                model_dict = drt.get_candidate(peaks,'discrete')
+                model = model_dict['model']
+
+                # --- Plotting
+                model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
             
-            # drt.plot_distribution(mark_peaks=True, label=label, ax=ax, area=area)
-            tau = drt.get_tau_eval(20)
-
-            # - Selecting the number of peaks for the drt distribution to have.
-            if peaks_to_fit == 'best_id':
-                best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
-                peaks = best_id
-
-            else: peaks = peaks_to_fit
-
-            # - Selecting the model. The number of peaks to plot and fit
-            model_dict = drt.get_candidate(peaks,'discrete')
-            model = model_dict['model']
-
-            # --- Plotting
-            model.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True)
+            elif drt_model == 'drtdop':
+                drt = plot_drtdop(loc, area, label=label, ax=ax, mark_peaks=False, scale_prefix = "")
+            
+            else:
+                print('In order to plot DRT, it must be fit with the dual or the drtdop model') 
+                print('Set drt= \'dual\' or to \'drtdop\'')          
 
             # --- Appending resistance values to lists
             bias_array = np.array([]) # Applied bias of the eis spectra relative to OCV
@@ -1111,6 +1381,11 @@ def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
         ax.tick_params(axis='both', labelsize='x-large')
         
         plt.tight_layout()
+
+        if save_drt is not None:
+            fmat_drt = save_drt.split('.', 1)[-1]
+            fig.savefig(save_drt, dpi=300, format=fmat_drt, bbox_inches='tight') 
+
         plt.show()
 
 
@@ -1118,7 +1393,7 @@ def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
         # ------- Cell Resistance Data
         excel_name = '_' + cell_name + '_Data.xlsx'
         excel_file = os.path.join(folder_loc,excel_name)
-        sheet_name = 'EC_bias_dual'
+        sheet_name = 'EC_bias_' + drt_model
         exists = False
 
         exists, writer = excel_datasheet_exists(excel_file,sheet_name)
@@ -1141,7 +1416,8 @@ def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
             df_po2 = pd.read_excel(excel_file,sheet_name)
 
 def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array = None,
-                        rmv_concs_r:np.array = None, rmv_concs_l:np.array = None,plot_all=False):
+                        rmv_concs_r:np.array = None, rmv_concs_l:np.array = None,plot_all=False,
+                        drt_model:str = 'dual',print_c:bool = True):
     '''
     This function is meant to linearly fit a single DRT peak across an oxygen concentration range
     This function can only be used after the po2_plots function
@@ -1164,6 +1440,12 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
     rmv_concs_l, np.array: (default = None)
         If two clusters overlap, specify the concentrations where there are overlap and this will remove
         the peaks with lower time constants (higher frequency, to the left) from the fit.
+    drt_model, str: (default = dual)
+        which type of drt used to analyze the data
+        if drt = 'dual' the dual regression model is used to fit the data
+        if drt = 'drtdop' then the drtdop model is used to fit the data
+    print_c , bool: (default = False)
+        if desired, the capacitance of each peak is calculated and fit
 
     Returns --> The slope of ln(1/asr)/ln(O2%), and a plot of the DRT peak fit and the activation energy is calculated and printed on the plot
     '''
@@ -1174,7 +1456,8 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
             data_file = os.path.join(folder_loc,file)
             break
     
-    all_data = pd.read_excel(data_file,'pO2_dual_DRT_peaks')
+    sheet_name = 'pO2_' + drt_model + '_DRT_peaks'
+    all_data = pd.read_excel(data_file,sheet_name)
     data = all_data[(all_data['Tau']>tau_low) & (all_data['Tau']<tau_high)]
 
     # ----- If desired, plotting all of the PO2 fits
@@ -1216,7 +1499,9 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
                 sys.exit(1)
 
             # - remove all higher tau values
-            data = data[data['Tau']!=highest_tau]
+            # data = data[data['Tau']!=highest_tau]
+            data = data[~((data['O2 Concentration (%)'] == conc) & (data['Tau'] == highest_tau))]
+
 
     # ----- removing a duplicate if there is overlap between clusters to the left (remove points to the left)
     if rmv_concs_l is not None:
@@ -1236,7 +1521,9 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
                 sys.exit(1)
 
             # - remove all higher tau values
-            data = data[data['Tau']!=lowest_tau]
+            # data = data[data['Tau']!=lowest_tau]
+            data = data[~((data['O2 Concentration (%)'] == conc) & (data['Tau'] == lowest_tau))]
+
     
     # ----- Finding low and high Tau values of the values plotted
     min_tau = data['Tau'].min()
@@ -1249,6 +1536,11 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
     
     o2_concs = np.array(concs)
     ln_o2 = np.log(o2_concs/100)
+
+    # --- If printing capacitance is desired
+    data['Capacitance (F/cm^2)'] = data['Tau']/data['Resistance']
+    if print_c == True:
+        print(data)
 
     # ----- Plotting
     x = ln_o2
@@ -1298,14 +1590,26 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
     
     # - Printing figure text
     mr_str = f'{round(mr,2)}'
+    # - Time constants
     tau_lows = f'{min_tau:.2e}'
     tau_highs = f'{max_tau:.2e}'
+    # - Capacitances
+    avg_c = data['Capacitance (F/cm^2)'].mean()
+    std_c = data['Capacitance (F/cm^2)'].std()
+    avg_cs = f'{avg_c:.2e}'
+    std_cs = f'{std_c:.2e}'
+
     if mr >=0:
         fig.text(0.68,0.22,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold',fontsize = tick_fontsize)
         fig.text(0.17,0.81,'DRT peak between '+tau_lows+'(\u03C4/s) and '+tau_highs+'(\u03C4/s)',fontsize = tick_fontsize)
+        fig.text(0.17,0.76,'Avg C: '+avg_cs+r'(F/cm$^2$) +/- '+std_cs,fontsize = tick_fontsize)
+
     else:
         fig.text(0.37,0.22,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold',fontsize = tick_fontsize)
         fig.text(0.38,0.81,'DRT peak between '+tau_lows+'(\u03C4/s) and '+tau_highs+'(\u03C4/s)',fontsize = tick_fontsize)
+        fig.text(0.38,0.76,'Avg C: '+avg_cs+r'(F/cm$^2$) +/- '+std_cs,fontsize = tick_fontsize)
+
+
     plt.tight_layout()
 
     plt.show()
@@ -1497,7 +1801,7 @@ def excel_datasheet_exists(excel_file:str,sheet_name:str):
     
     return exists,writer
 
-def append_drt_peaks(df_tau_r, drt, area, condition, peaks_to_fit = 'best_id'):
+def append_drt_peaks(df_tau_r, drt, area, condition, peaks_to_fit = 'best_id',drt_model='dual'):
     '''
     Takes a DRT instance and extracts the peak data from it. It then appends this data to a dataframe (df_tau_r)
     The dataframe is made outside the function
@@ -1517,26 +1821,36 @@ def append_drt_peaks(df_tau_r, drt, area, condition, peaks_to_fit = 'best_id'):
         This basically just sets the amout of peaks to fit
         if this is set to the default 'best_id' then it fits the number of peaks suggested by dual_drt
         if this is set to a integer, it fit the number of peaks set by that integer
+    drt_model, str: (default = dual)
+        which type of drt used to analyze the data
+        if drt = 'dual' the dual regression model is used to fit the data
+        if drt = 'drtdop' then the drtdop model is used to fit the data
     
     Return --> None
     '''
-    # --- obtain time constants from inverters and Appending tau and r for each peak into df_tau_r
-    if peaks_to_fit == 'best_id':
-        best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
-        peaks = best_id
+    if drt_model == 'dual':
+        # --- obtain time constants from inverters and Appending tau and r for each peak into df_tau_r
+        if peaks_to_fit == 'best_id':
+            best_id = drt.get_best_candidate_id('discrete', criterion='lml-bic')
+            peaks = best_id
 
-    else: peaks = peaks_to_fit
-    # - Selecting the model. The number of peaks to plot and fit
-    model_dict = drt.get_candidate(peaks,'discrete')
-    model = model_dict['model']
-    tau = model_dict['peak_tau'] # τ/s
+        else: peaks = peaks_to_fit
+        # - Selecting the model. The number of peaks to plot and fit
 
-    # - Obtaining the resistance value for each peak
-    r_list = []
-    for i in range(1,int(peaks)+1):
-        peak = 'R_HN'+str(i)
-        resistance = model.parameter_dict[peak]
-        r_list.append(resistance)
+        model_dict = drt.get_candidate(peaks,'discrete')
+        model = model_dict['model']
+        tau = model_dict['peak_tau'] # τ/s
+
+        # - Obtaining the resistance value for each peak
+        r_list = []
+        for i in range(1,int(peaks)+1):
+            peak = 'R_HN'+str(i)
+            resistance = model.parameter_dict[peak]
+            r_list.append(resistance)
+
+    elif drt_model == 'drtdop':
+        tau = drt.find_peaks().tolist() # Finding Tau, and making it iterable
+        r_list = drt.quantify_peaks(tau=tau)
 
     r = np.array(r_list) * area # Ω*cm2
 
@@ -1639,12 +1953,120 @@ def df_tau_r_to_excel(cell_name, folder_loc, df_tau_r,sheet_name, overwrite = Fa
         df_tau_r.to_excel(writer_peaks, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
         writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
 
+def plot_drt_peaks(cell_folder:str, sheet_name:str, condition_label:str, ax = None, cmap = 'viridis',test_type = None):
+    '''
+    Plot drt peaks for all DRT data taken from a cell over a certain condition
+    The data is pulled from the cell data spread sheet
+    Thus, the DRT needs to already be fit, analyzed, and appended to the datasheet
 
+    Parameters:
+    ----------
+    cell_folder, str:
+        Path to the folder that contains the data and readme for each cell
+    sheet_name, str:
+        Name of the datasheet in the cell data excel file that contains the desired data
+    ax, mpl.Axes: (default = None)
+        Axes object used to plot the figure
+    condition_label, str:
+        The name of the column in the dataframe containing the condition data
+    test_type, str: (default = None)
+        The type of test ran to get the data
+        ex: 'stb', ...
+    cmap, str or cmap object: (default = 'viridis')
+        The colormap used for plotting
 
+    Return --> None, but a figure is plot
+    '''
+    # --- Taking the correct data from the cell Data spreadsheet
+    cell_name = find_cell_name(cell_folder)
+    excel_name = '_' + cell_name + '_Data.xlsx'
+    excel_file = os.path.join(cell_folder,excel_name)
+    df = pd.read_excel(excel_file, sheet_name)
 
+    # ----- plotting
+    if ax is None: # Idea for this If statement taken from Dr. Jake Huang's code
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.get_figure()
+        
+    cmap = plt.cm.get_cmap(cmap)
+    ax = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df, hue= condition_label ,palette = cmap,s=69, legend=False)
 
+    # ---- Formatting
+    ax.set_ylabel('Peak ASR (\u03A9 cm$^2$)',fontsize='xx-large')
+    ax.set_xlabel('Time Constant (\u03C4/s)',fontsize='xx-large')
+    ax.set(xscale='log')
+    ax.set_ylim(0)
 
+    # --- Excessive formatting
+    sns.despine()
+    ax.tick_params(axis='both', which='major', labelsize='x-large')
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
+    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
 
+    if test_type == 'stb':
+        end_time = df[condition_label].iloc[-1]
+        # --- Colorbar formatting
+        sm = plt.cm.ScalarMappable(cmap=cmap)
+        sm.set_array([0,end_time])
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cb = plt.colorbar(sm,ticks = [0,end_time],cax=cax)
+        cb.set_label(label='Time (hrs)',fontsize = 'xx-large',labelpad = -10)
+        # cb.set_ticks(ticks = [0,end_time],fontsize='xx-large')
+        cb.ax.tick_params(labelsize='x-large')
+
+    plt.tight_layout()
+
+def find_cell_name(folder_loc):
+    """
+    Finds the name of the cell
+
+    Parameters
+    ----------
+    folder_loc, str: (path to a directory)
+        The folder location of the EIS files 
+
+    Return --> str, The name of the cell
+    """
+    for file in os.listdir(folder_loc): # Finding the name of the cell
+        if file.find('PEIS')!=-1:
+            cell_name = os.path.basename(file).split("_", 1)[0]
+            break
+        
+    return(cell_name)
+
+def clamp_resistance(galv_loc):
+    '''
+    Returns and prints the clamp resistance value
+    Measured using a galvanostatic hold with a Gamry potentiostat
+    Uses Ohms law (V=IR)
+
+    Parameters:
+    ----------
+    galv_loc, str:
+        path to the galvanostatic .dta file
+        
+    Return --> R, float
+    '''
+    galv_txt = read_dta(galv_loc)
+
+    # --- Finding the start of the data (Also informed by Hybrid_drt)
+    data_flag = galv_txt.find('COMPLIANCEVOLTAGE')
+    metadata = galv_txt[:data_flag] # figure out where the metadata ends
+    skiprows = len(metadata.split('\n')) + 2 # Finding how many rows to skip before the data starts
+
+    df = pd.read_csv(galv_loc,sep='\t',skiprows=skiprows,encoding='latin1',engine='python')
+
+    # --- Calculations
+    V = df['V vs. Ref.'].mean(axis=0) # V
+    I = df['A'].mean(axis=0) # A
+    R = V/I
+
+    # Printing and returning the resistance value
+    print(f"The resistance of the clamp is: {R:.4f}")
+
+    return R
 
 
 

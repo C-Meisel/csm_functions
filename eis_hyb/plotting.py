@@ -15,8 +15,13 @@ from hybdrt import fileload as fl
 import os
 from matplotlib.ticker import FormatStrFormatter
 from io import StringIO
+import matplotlib.ticker as ticker
 
 from .data_formatting import *
+
+' Font '
+mpl.rcParams['font.sans-serif'] = 'Arial'
+
 
 def plot_ocv(loc : str):
     '''
@@ -259,7 +264,6 @@ def plot_sc_peiss(area:float, condition:str, loc:str, ncol:int=1,
         plt.legend(loc='upper left',bbox_to_anchor=(1,1),ncol=ncol)
 
     plt.tight_layout()
-
 
 def plot_eis_ocvs(loc:str, label:str, ymin:float=1.00, ymax:float=1.10, ncol:int=1):
     '''
@@ -538,8 +542,48 @@ def plot_ivecs(area:float,condition:str,loc:str, **plot_args:dict):
     plt.yticks(fontsize = 'x-large')
     plt.tight_layout()
 
+def plot_gs(loc,cd:float = None):
+    '''
+    Plot a galvanostatic hold from a Gamry potentiostat
+    
+    Parameters
+    ----------
+    folder_loc, string:
+        The location of the folder that contains the .DTA files to be plotted
+    cd, float: (default = None)
+        This is the current density the cell was held at in mA/cm^2
+        if cd is not none then the current density will be plot on the chart
+    '''
+    # --- initial data formatting:
+    df = get_gs_data(loc)
+    df['s'] = df['s']/3600 # Converting seconds to hours
+
+    # --- Plotting
+    fig, ax = plt.subplots()
+    ax.plot(df['s'],df['V vs. Ref.'],'.k') # For presentations set markersize to 20
+
+    # - Plot formatting
+    ax.set_xlabel('Time (hrs)',fontsize = 'xx-large')
+    ax.set_ylabel('Voltage (V)',fontsize = 'xx-large')
+    
+    # - Excessive plot formatting
+    ax.tick_params(axis='both', which='major', labelsize=14) #changing tick label size
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
+    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    if cd is not None:
+        cd_s = str(cd)
+        plt.figtext(0.25,0.59, cd_s + r' mA/cm$^2$',fontsize='xx-large', ha='center',va='center')
+    
+    plt.tight_layout()
+    plt.show()
+
 def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:bool=False,
-                     first_file:str = 'default', clean_axis=True, quant_stb = 'mv', **kwargs):
+                     first_file:str = 'default', clean_axis=True, quant_stb = 'mv',
+                     save_plot:str=None, cd:float = None, label:str = None,subfig:str=None,
+                     publication:bool=False, **kwargs):
     '''
     Looks through the specified folder and plots all the galvanostatic stability testing data in one plot, 
     and fits it. This function compliments the gamry sequence I use for fuel cell mode stability testing
@@ -573,6 +617,22 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
     plot_args, dict:
         Any arguments that are passed to the plot function.
         generally for presentations I use markersize = 20
+    save_drt, str: (default = None)
+        If this is not none, the After 10 hour DRT spectra plot will be saved.
+        Save_drt is the file name and path of the saved file.
+    cd, float: (default = None)
+        This is the current density the cell was held at in mA/cm^2
+        if cd is not none then the current density will be plot on the chart
+    label, str: (default = None)
+        Label of the cell on the chart
+        If None, nothing is printed
+    subfig, str: (default=None)
+        Label of the subfigure for a paper (a,b,c...etc)
+        If None, nothing is printed
+    publication, bool: (default = False)
+        If false the figure is formatted for a presentation
+        If true the figure is formatted to be a subfigure in a journal paper.
+        Setting publication to true increases all feature sizes
 
     Return --> none but it plots the figure and shows it
     '''
@@ -626,13 +686,15 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
     cat_dfs.sort_values(by=['s'])
     cat_dfs['s'] = (cat_dfs['s']-int(t0))/3600 #(hrs) subtracting the start time to get Delta t and converting time from seconds to hours and
     end_time = int(cat_dfs['s'].max())
-    start_time = int(cat_dfs['s'].min()) #is nt necessarily 0. Maybe you are only looking at a small portion of the data
+    start_time = int(cat_dfs['s'].min()) #isnt necessarily 0. Maybe you are only looking at a small portion of the data
 
     # ------- plotting:
     fig, ax = plt.subplots()
 
-    if len(kwargs)==0: # Basically if hte dictionary is empty
+    if len(kwargs)==0 and publication == False: # Basically if the dictionary is empty
         kwargs['markersize'] = 20
+    elif len(kwargs)==0 and publication == True:
+        kwargs['markersize'] = 30
     
     if smooth == False:
         ax.plot(cat_dfs['s'],cat_dfs['V vs. Ref.'],'.k',**kwargs) # For presentations set markersize to 20
@@ -644,6 +706,20 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         ax.plot(cat_dfs['s'],moving_avg_voltage,'k',**kwargs)
 
     # ------- Plot formatting
+    if publication == False:
+        fontsize = fontsize
+        fit_linewidth=1
+        y_label_pad = -40
+        x_label_pad = -15
+        spine_width = 1
+    else:
+        fontsize = 26
+        txt_size = fontsize*0.85
+        fit_linewidth=2
+        y_label_pad = -15
+        x_label_pad = -20
+        spine_width = 2
+
     ax.set_xlabel('Time (hrs)',fontsize = fontsize)
     ax.set_ylabel('Voltage (V)',fontsize = fontsize)
     ax.tick_params(axis='both', which='major', labelsize=fontsize-2) #changing tick label size
@@ -653,54 +729,112 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
     if clean_axis == True:
         ax.set_yticks([0,0.8,ocv])
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.4g'))
-        ax.yaxis.labelpad = -20
-    
-    ax.set_xticklabels([start_time,end_time],fontsize=18)
+        ax.yaxis.labelpad = y_label_pad
+
+    if publication == False:
+        ax.set_xticklabels([start_time,end_time],fontsize=fontsize-2)
+        ax.tick_params(axis='both', which='major', labelsize=fontsize-2,width=1,length=3) #changing tick label size
+        ax.set_xticklabels([start_time,end_time],fontsize=18)
+
+    else:
+        ax.set_xticklabels([start_time,end_time],fontsize=txt_size)
+        ax.tick_params(axis='both', which='major', labelsize=txt_size,
+                            width=spine_width,length=spine_width*3) #changing tick label size
+        for spine in ax.spines.values():
+            spine.set_linewidth(spine_width)
+        ax.yaxis.labelpad = y_label_pad
+
+
     ax.spines['bottom'].set_bounds(start_time, end_time)
-    ax.xaxis.labelpad = -15
+    ax.xaxis.labelpad = x_label_pad
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_ylim(0,ocv)
+
+    x0_center = np.mean(ax.get_xlim())
+    y0_range = ax.get_ylim()[1] - ax.get_ylim()[0]
 
     # ------- fitting and writing slope on graph:
     if fit == True:
         m,b = np.polyfit(cat_dfs['s'],cat_dfs['V vs. Ref.'],1)
         fit = m*cat_dfs['s']+b
         ax.plot(cat_dfs['s'],fit,'--r')
+
+        if publication == False:
+            decimals = 2
+        elif publication == True:
+            decimals=0
         
         if quant_stb == 'mv':
             mp = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
-            ms = f'{round(mp,2)}'
+            ms = f'{round(mp,decimals)}'
             plt.figtext(0.39,0.17, ms+' mV/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'potential':
             init_v = get_init_v(folder_loc,fc=True)
             mp = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
-            ms = f'{round(mp,2)}'
+            ms = f'{round(mp,decimals)}'
             plt.figtext(0.40,0.17, ms+' %/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'overpotential':
             init_v = get_init_v(folder_loc,fc=True)
             mp = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
-            ms = f'{round(mp,2)}'
+            ms = f'{round(mp,decimals)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'all':
             init_v = get_init_v(folder_loc,fc=True) # folder_loc
 
             m_mv = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
-            m_mvs = f'{round(m_mv,2)}'
-            plt.figtext(0.43,0.27, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
+            m_mvr = round(m_mv,decimals)
+            m_mvs = "{:.{}f}".format(m_mvr, decimals)
+
 
             m_volt = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
-            m_volts = f'{round(m_volt,2)}'
-            plt.figtext(0.43,0.20, m_volts + ' %/khrs',weight='bold',size='xx-large')
+            m_voltr = round(m_volt,decimals)
+            m_volts = "{:.{}f}".format(m_voltr, decimals)
 
             m_over = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
-            m_overs= f'{round(m_over,2)}'
-            plt.figtext(0.43,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+            m_overr= round(m_over,decimals)
+            m_overs = "{:.{}f}".format(m_overr, decimals)
+
+            if publication == False: 
+                plt.figtext(0.43,0.28, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
+                plt.figtext(0.43,0.21, m_volts + ' %/khrs',weight='bold',size='xx-large')
+                plt.figtext(0.43,0.14, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+            elif publication == True:
+                ax.text(x0_center,y0_range*0.28, m_mvs + ' mV/khrs',weight='bold',size=fontsize, ha='center', va='center')
+                ax.text(x0_center,y0_range*0.17, m_volts + ' %/khrs',weight='bold',size=fontsize, ha='center', va='center')
+                ax.text(x0_center,y0_range*0.06, m_overs + ' %η/khrs',weight='bold',size=fontsize, ha='center', va='center')
+
+    # --- Printing current density on the graph
+    if cd is not None and publication == False:
+        cd_s = str(cd)
+        plt.figtext(0.55,0.59, cd_s + r' mA/cm$^2$',fontsize=23, ha='center',va='center')
+    elif cd is not None and publication == True:
+        cd_s = str(cd)
+        ax.text(x0_center,y0_range*0.50, cd_s + r' mA/cm$^2$',fontsize=fontsize, ha='center',va='center')
+
+    # --- Printing the label on the chart
+    if label is not None:
+        ax.text(x0_center,y0_range*1.00, label, fontsize=fontsize * 1.1, ha='center',va='center')
+    
+    # --- Printing the subfigure on the chart:
+    if subfig is not None:
+        # plt.figtext(0.01, 1.00, 'a', fontsize=28, fontweight='bold', va='top', ha='left')
+        # x_offset = -0.05  # Adjust this as needed
+        # y_offset = 1.05 # Adjust this as needed
+        # plt.text(x_offset, y_offset, 'a', transform=plt.gcf().transFigure, 
+        #         fontsize=28, fontweight='bold', va='top', ha='left')
+        ax.text(-0.1, 1.05, subfig, fontsize=28, fontweight='bold', 
+                va='bottom', ha='right', transform=ax.transAxes)
 
     plt.tight_layout()
+
+    if save_plot is not None:
+        fmat = save_plot.split('.', 1)[-1]
+        fig.savefig(save_plot, dpi=300, format=fmat, bbox_inches='tight')
+
 
     plt.show()
 
@@ -722,6 +856,10 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
         If you want to change the first file, put the loc in place of 'default
     fontsize, int: (default = 16)
         The font size of the words on the plot
+    clean_axis, string: (default = True)
+        When true, plots the Voltage axis with less points
+        This is a much cleaner way to plot and looks better when presenting
+        however it clears out the Y axis so if you want to zoom in on an image, set this to False
     quant_stb, str: (default = 'mv')
         This is how the stability data gets reported on the graph. There are many ways to quantify stability
         if = mv, the slope of the graph is multiplied by 1,000,000 to report the data in mV/khrs
