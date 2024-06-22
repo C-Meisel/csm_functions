@@ -20,31 +20,78 @@ import matplotlib.ticker as ticker
 from .data_formatting import *
 
 ' Font '
-mpl.rcParams['font.sans-serif'] = 'Arial'
+from matplotlib import font_manager
+ubuntu = '/Library/Fonts/Ubuntu-Regular.ttf'
+font_manager.fontManager.addfont(ubuntu)
+
+mpl.rcParams['font.sans-serif'] = 'Ariel'
+
+' Plotting params '
+spine_thickness = 1.3
+txt_spine_color = '#212121'  #'#212121' # 'black' #333333
+plt.rcParams.update({
+    'axes.linewidth': spine_thickness,        # Spine thickness
+    'xtick.major.width': spine_thickness,     # Major tick thickness for x-axis
+    'ytick.major.width': spine_thickness,     # Major tick thickness for y-axis
+    'xtick.major.size': spine_thickness * 3,      # Major tick length for x-axis
+    'ytick.major.size': spine_thickness * 3,      # Major tick length for y-axis
+    
+    'axes.grid': False,           # Add grid lines
+    'grid.alpha': 0.4,           # Grid lines transparency
+    
+    'font.family': 'sans-serif',
+
+    'text.color': txt_spine_color,                   # Color for all text
+    'axes.labelcolor': txt_spine_color,              # Color for axis labels
+    'axes.edgecolor': txt_spine_color,               # Color for axis spines
+    'xtick.color': txt_spine_color,                  # Color for x-axis tick labels and ticks
+    'ytick.color': txt_spine_color,                  # Color for y-axis tick labels and ticks
+})
 
 
-def plot_ocv(loc : str):
+
+def plot_ocv(loc : str , title = None, save_plot:str = None):
     '''
     Plots OCV vs time from a .DTA file generated from a Gamry Potentiostat
 
-    Parameter:
+    Parameters:
     ----------
-    loc,str: Location of the .DTA file that contains the OCV data.
+    loc, str: 
+        Location of the .DTA file that contains the OCV data.
+    save_plot, str: (default = None)
+        If this is not none, the plot will be saved.
+        Save_plot is the file name and path of the saved file.
 
-    returns: the plot of the figure
+    returns: None but plots the OCV figure
     '''
     df = get_ocv_data(loc) # Reads the .DTA file and saves the OCV data as a dataframe
 
     df_useful = df[['s','V']]
     fig, ax = plt.subplots()
-    ax.plot(df_useful['s'],df_useful['V'],'ko')
+    ax.plot(df_useful['s'],df_useful['V'],'o',color=txt_spine_color)
 
-    # - Formatting
-    ax.set_xlabel('Time (s)',fontsize='xx-large')
-    ax.set_ylabel('Voltage (V)',fontsize='xx-large')
-    ax.tick_params('both',labelsize = 'x-large')
+    # --- Formatting
+    ax_title_fs = 25
+    ax_tl_fs = ax_title_fs * 0.85 
+    ax.set_xlabel('Time (s)',fontsize=ax_title_fs)
+    ax.set_ylabel('Voltage (V)',fontsize=ax_title_fs)
+    ax.tick_params('both',labelsize = ax_tl_fs)
+
+    # - Excessive formatting:
+    # ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=4))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    # ax.grid(alpha=0.4)
 
     plt.tight_layout()
+
+    if title is not None:
+        ax.set_title(title,fontsize=ax_title_fs*1.1)
+
+    if save_plot is not None:
+        fmat = save_plot.split('.', 1)[-1]
+        fig.savefig(save_plot, dpi=300, format=fmat, bbox_inches='tight')
+
     plt.show()
 
 def plot_peis(area:float, loc:str, ohmic_rtot:np.array = None, pro:bool = False, cut_inductance:bool = False,**plot_args):
@@ -191,7 +238,7 @@ def plot_peiss(area:float, condition:str, loc:str, ncol:int=1,
     plt.ylabel('$\u2212$Zimag (\u03A9 cm$^2$)',size=18)
     plt.tick_params(axis='both', which='major', labelsize=14)
     dashes = [6,2,2,2,6,2,2,4,6,2,6,4]
-    plt.axhline(y=0, color='k',dashes=dashes)
+    plt.axhline(y=0, color='#212121',dashes=dashes)
     plt.axis('scaled') #Keeps X and Y axis scaled 1 to 1
     plt.locator_params(axis='y', nbins=3) # Sets the number of ytick labels but still has matplotlib place them
 
@@ -355,7 +402,8 @@ def plot_ivfc(area:float, loc:str):
     plt.tight_layout()
     plt.show()
 
-def plot_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg_cols:int=None):
+def plot_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg_cols:int=None,
+               save_plot=None):
     '''
     Plots multiple IV and power density curves, input is a tuple of (area,condition,location of IV curve)
 
@@ -370,6 +418,9 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg
         If a colormap is defined here it will be used for the plots
     leg_cols,int: (default is None)
         how many columns the legend will have. If none, this will be based of the abount of curves being plot
+    save_plot, str: (default = None)
+        If this is not none, the plot will be saved.
+        Save_plot is the file name and path of the saved file.
 
     Return --> none but it plots the figure and shows it
     '''
@@ -448,6 +499,11 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg
 
     plt.subplots_adjust(top=0.8)
     plt.tight_layout()
+        
+    if save_plot is not None:
+        fmat = save_plot.split('.', 1)[-1]
+        fig.savefig(save_plot, dpi=300, format=fmat, bbox_inches='tight')
+
     plt.show()
 
 def plot_ivec(area:float, loc:str, CD_at_V:float = 1.3):
@@ -617,9 +673,9 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
     plot_args, dict:
         Any arguments that are passed to the plot function.
         generally for presentations I use markersize = 20
-    save_drt, str: (default = None)
-        If this is not none, the After 10 hour DRT spectra plot will be saved.
-        Save_drt is the file name and path of the saved file.
+    save_plot, str: (default = None)
+        If this is not none, the plot will be saved.
+        Save_plot is the file name and path of the saved file.
     cd, float: (default = None)
         This is the current density the cell was held at in mA/cm^2
         if cd is not none then the current density will be plot on the chart
@@ -835,11 +891,11 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
         fmat = save_plot.split('.', 1)[-1]
         fig.savefig(save_plot, dpi=300, format=fmat, bbox_inches='tight')
 
-
     plt.show()
 
 def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize = 20,
-                clean_axis=True, quant_stb = 'mv'):
+                clean_axis=True, quant_stb = 'mv', save_plot:str=None, label:str = None,
+                subfig:str=None, publication:bool=False, **kwargs):
     '''
     Looks through the specified folder and plots all the ocv stability test data in one plot and fits it.
     This function compliments the gamry sequence I use for stability testing.
@@ -868,6 +924,19 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
         if = overpotential, then the slope is multiplied by 1,000,000 then divided by the starting potential-OCV to get %/khrs
         (% of the overpotential lost during testing)
         if = all, then all three of the above options are printed at on the figure
+    save_plot, str: (default = None)
+        If this is not none, the plot will be saved.
+        Save_plot is the file name and path of the saved file.
+    label, str: (default = None)
+        Label of the cell on the chart
+        If None, nothing is printed
+    subfig, str: (default=None)
+        Label of the subfigure for a paper (a,b,c...etc)
+        If None, nothing is printed
+    publication, bool: (default = False)
+        If false the figure is formatted for a presentation
+        If true the figure is formatted to be a subfigure in a journal paper.
+        Setting publication to true increases all feature sizes
 
     Return --> none, but it plots the data, fits it, and shows it
     '''
@@ -912,9 +981,30 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
 
     # ======= Plotting
     fig, ax = plt.subplots()
-    ax.plot(cat_dfs['s'],cat_dfs['V vs. Ref.'], '.k', markersize=20)
 
-    # -- Plot formatting    
+    if len(kwargs)==0 and publication == False: # Basically if the dictionary is empty
+        kwargs['markersize'] = 20
+    elif len(kwargs)==0 and publication == True:
+        kwargs['markersize'] = 30
+
+    ax.plot(cat_dfs['s'],cat_dfs['V vs. Ref.'], '.k',**kwargs)
+
+
+    # -- Plot formatting
+    if publication == False:
+        fontsize = fontsize
+        fit_linewidth=1
+        y_label_pad = -40
+        x_label_pad = -15
+        spine_width = 1
+    else:
+        fontsize = 26
+        txt_size = fontsize*0.85
+        fit_linewidth=2
+        y_label_pad = -15
+        x_label_pad = -20
+        spine_width = 2
+       
     ax.set_xlabel('Time (hrs)',fontsize = fontsize)
     ax.set_ylabel('Voltage (V)',fontsize = fontsize)
     ax.tick_params(axis='both', which='major', labelsize=fontsize-2) #changing tick label size
@@ -924,11 +1014,24 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
     if clean_axis == True:
         ax.set_yticks([0,0.8,ocv])
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.4g'))
-        ax.yaxis.labelpad = -15
+        ax.yaxis.labelpad = y_label_pad
+
+    if publication == False:
+        ax.set_xticklabels([start_time,end_time],fontsize=fontsize-2)
+        ax.tick_params(axis='both', which='major', labelsize=fontsize-2,width=1,length=3) #changing tick label size
+        ax.set_xticklabels([start_time,end_time],fontsize=18)
+
+    else:
+        ax.set_xticklabels([start_time,end_time],fontsize=txt_size)
+        ax.tick_params(axis='both', which='major', labelsize=txt_size,
+                            width=spine_width,length=spine_width*3) #changing tick label size
+        for spine in ax.spines.values():
+            spine.set_linewidth(spine_width)
+        ax.yaxis.labelpad = y_label_pad
     
     ax.set_xticklabels([start_time,end_time],fontsize=18)
     ax.spines['bottom'].set_bounds(start_time, end_time)
-    ax.xaxis.labelpad = -15
+    ax.xaxis.labelpad = x_label_pad
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_ylim(0,1.2)
@@ -943,39 +1046,68 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
         m,b = np.polyfit(cat_dfs['s'],cat_dfs['V vs. Ref.'],1)
         fit = m*cat_dfs['s']+b
         ax.plot(cat_dfs['s'],fit,'--r')
+
+        # --- Finding center of image
+        x0_center = np.mean(ax.get_xlim())
+        y0_range = ax.get_ylim()[1] - ax.get_ylim()[0]
+
+        # --- Setting decimal amounts
+        if publication == False:
+            decimals = 2
+        elif publication == True:
+            decimals = 0
         
         if quant_stb == 'mv':
             mp = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
-            ms = f'{round(mp,2)}'
+            ms = f'{round(mp,decimals)}'
             plt.figtext(0.39,0.17, ms+' mV/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'potential':
             init_v = get_init_v(folder_loc,fc=False)
             mp = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
-            ms = f'{round(mp,2)}'
+            ms = f'{round(mp,decimals)}'
             plt.figtext(0.40,0.17, ms+' %/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'overpotential':
             init_v = get_init_v(folder_loc,fc=False)
             mp = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
-            ms = f'{round(mp,2)}'
+            ms = f'{round(mp,decimals)}'
             plt.figtext(0.39,0.17, ms+' %η/khrs',weight='bold',size='xx-large')
         
         if quant_stb == 'all':
             init_v = get_init_v(folder_loc,fc=True)
 
             m_mv = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
-            m_mvs = f'{round(m_mv,2)}'
-            plt.figtext(0.39,0.27, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
+            m_mvr = round(m_mv,decimals)
+            m_mvs = "{:.{}f}".format(m_mvr, decimals)
 
             m_volt = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
-            m_volts = f'{round(m_volt,2)}'
-            plt.figtext(0.39,0.20, m_volts + ' %/khrs',weight='bold',size='xx-large')
+            m_voltr = round(m_volt,decimals)
+            m_volts = "{:.{}f}".format(m_voltr, decimals)
 
             m_over = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
-            m_overs= f'{round(m_over,2)}'
-            plt.figtext(0.39,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+            m_overr= round(m_over,decimals)
+            m_overs = "{:.{}f}".format(m_overr, decimals)
 
+
+            if publication == False: 
+                plt.figtext(0.39,0.27, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
+                plt.figtext(0.39,0.20, m_volts + ' %/khrs',weight='bold',size='xx-large')
+                plt.figtext(0.39,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+            elif publication == True:
+                ax.text(x0_center,y0_range*0.28, m_mvs + ' mV/khrs',weight='bold',size=fontsize, ha='center', va='center')
+                ax.text(x0_center,y0_range*0.17, m_volts + ' %/khrs',weight='bold',size=fontsize, ha='center', va='center')
+                ax.text(x0_center,y0_range*0.06, m_overs + ' %η/khrs',weight='bold',size=fontsize, ha='center', va='center')
+
+    # --- Printing the label on the chart
+    if label is not None:
+        ax.text(x0_center,y0_range*1.05, label, fontsize=fontsize * 1.1, ha='center',va='center')
+
+    plt.tight_layout()
+        
+    if save_plot is not None:
+        fmat = save_plot.split('.', 1)[-1]
+        fig.savefig(save_plot, dpi=300, format=fmat, bbox_inches='tight')
 
     plt.show()
 
@@ -1386,7 +1518,7 @@ def plot_bias_potentio_holds(area:float,folder_loc:str,voltage:bool=True):
         plt.axhline(y=0, color= 'r', linestyle='--')
         plt.show()
 
-def lnpo2(ohmic_asr:np.array,rp_asr:np.array,O2_conc:np.array): 
+def lnpo2(ohmic_asr:np.array,rp_asr:np.array,O2_conc:np.array, save_plot:str = None): 
     '''
     Plots ln(1/ASRs) as a function of ln(PO2), inputs are arrays of floats
 
@@ -1398,6 +1530,9 @@ def lnpo2(ohmic_asr:np.array,rp_asr:np.array,O2_conc:np.array):
         The rp area specific resistance values of the eis spectra at different oxygen concentrations
     O2_conc, array: 
         The oxygen concentrations that the EIS spectra were taken at
+    save_plot, str: (default = None)
+        If this is not none, the plot will be saved.
+        Save_plot is the file name and path of the saved file.
 
     Returns --> None, but it plots the data and shows it
     '''
@@ -1408,42 +1543,57 @@ def lnpo2(ohmic_asr:np.array,rp_asr:np.array,O2_conc:np.array):
 
     # ----- Plotting
     fig,ax = plt.subplots()
-    ax.plot(ln_O2,ln_ohmic_asr,'o',color = '#21314D',label = r'ASR$_\mathrm{O}$')
-    ax.plot(ln_O2,ln_rp_asr,'o',color = '#D2492A',label = r'ASR$_\mathrm{P}$')
+    ax.plot(ln_O2,ln_ohmic_asr,'o',color = '#21314D',label = r'ASR$_\mathrm{O}$',markersize=10)
+    ax.plot(ln_O2,ln_rp_asr,'o',color = '#D2492A',label = r'ASR$_\mathrm{P}$',markersize=10)
 
     # ----- Fitting
     mo,bo = np.polyfit(ln_O2,ln_ohmic_asr,1)
     mr,br = np.polyfit(ln_O2,ln_rp_asr,1)
     fit_o = mo*ln_O2 + bo
     fit_r = mr*ln_O2 + br
-    ax.plot(ln_O2,fit_o,color = '#21314D')
-    ax.plot(ln_O2,fit_r,color = '#D2492A')
+    ax.plot(ln_O2,fit_o,color = '#21314D',lw=spine_thickness*1.6)
+    ax.plot(ln_O2,fit_r,color = '#D2492A',lw=spine_thickness*1.6)
 
     # ----- Formatting
-    ax.set_xlabel('ln(O$_2$) (%)')
-    ax.set_ylabel('ln(1/ASR) (S/cm$^2$)') #(\u03A9*cm$^2$)
+    ax_title_fs = 18
+    ax_tl_fs = ax_title_fs * 0.85
+    ax.set_xlabel('ln(O$_2$) (%)', fontsize=ax_title_fs)
+    ax.set_ylabel('ln(1/ASR) (S/cm$^2$)', fontsize = ax_title_fs) #(\u03A9*cm$^2$)
     ax.set_xlim(-1.7,0.1)
-    ax.legend()
+    ax.set_xticks(ln_O2)
+    ax.legend(frameon=False,fontsize=ax_title_fs*0.75,handletextpad=0.2)
 
     # ----- Setting up second x axis
     axx2 = ax.twiny()
-    axx2.set_xlabel('Oxygen Concentration (%)')
+    axx2.set_xlabel('Oxygen Concentration (%)',fontsize=ax_title_fs)
     axx2.set_xticks(ln_O2)
-    axx2.set_xticklabels(O2_conc*100)
+    axx2.set_xticklabels(O2_conc*100,fontsize=ax_tl_fs)
     axx2.set_xlim(-1.7,0.1)
     
     # Figtext - If statement is to compensate for the fact that if Rp>ohmic Rp line is lower and visa-versa
     if ohmic_asr[0]<rp_asr[0]: 
         mo_str = f'{round(mo,2)}'
-        plt.figtext(0.5,0.84,r'ASR$_\mathrm{O}$ Slope = '+mo_str,weight='bold')
+        plt.figtext(0.45,0.80,r'ASR$_\mathrm{O}$ Slope = '+ mo_str,weight='bold', fontsize = ax_title_fs*0.75)
         mr_str = f'{round(mr,2)}'
-        plt.figtext(0.5,0.15,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold')  
+        plt.figtext(0.45,0.25,r'ASR$_\mathrm{P}$ Slope = '+ mr_str,weight='bold', fontsize = ax_title_fs*0.75)  
 
     elif ohmic_asr[0]>rp_asr[0]:
         mo_str = f'{round(mo,2)}'
-        plt.figtext(0.5,0.15,r'ASR$_\mathrm{O}$ Slope = '+mo_str,weight='bold')
+        plt.figtext(0.45,0.15,r'ASR$_\mathrm{O}$ Slope = '+mo_str,weight='bold', fontsize = ax_title_fs*0.75)
         mr_str = f'{round(mr,2)}'
-        plt.figtext(0.5,0.84,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold')  
+        plt.figtext(0.45,0.84,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold', fontsize = ax_title_fs*0.75)  
+
+    # ----- Excessive formatting:
+    ax.spines['right'].set_visible(False)
+    axx2.spines['right'].set_visible(False)
+    ax.tick_params(axis='both', which='major', labelsize=ax_tl_fs) #changing tick label size
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
+    # ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    # ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+
+    if save_plot is not None:
+        fmat = save_plot.split('.', 1)[-1]
+        fig.savefig(save_plot, dpi=300, format=fmat, bbox_inches='tight')
 
     plt.tight_layout()
     plt.show()

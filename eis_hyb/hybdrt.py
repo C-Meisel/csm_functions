@@ -213,6 +213,7 @@ def plot_polmap(polmap, group_by = None,structure_plot = False,normalize_plot = 
                 title:str = None, publication:bool = False):
     '''
     Plots an already fit polmap
+    Code pretty much Copy-pasted from code written from Dr. Jake Huang
 
     Parameters:
     ----------
@@ -269,6 +270,7 @@ def plot_polmap(polmap, group_by = None,structure_plot = False,normalize_plot = 
     plt.show()
 
     ' - - - - - Get pol map "structure" - - - - - '
+    v_base = np.unique(v_base) # 
     # Here we take the individual DRT fits, refine and aggregate them, 
     # and apply filters and other functions for analysis
 
@@ -390,6 +392,7 @@ def plot_polmap(polmap, group_by = None,structure_plot = False,normalize_plot = 
 
             fig.tight_layout()
             plt.show()
+            
     else: # Just plot the ridge plot
         fig, ax = plt.subplots()
         cmap = 'viridis'

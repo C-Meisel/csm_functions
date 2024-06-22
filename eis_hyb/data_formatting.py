@@ -306,8 +306,8 @@ def get_init_ocv(folder_loc:str, fc:bool = True) -> float:
 
     if fc == True:
         for file in files:
-            if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1):
-            # if file.find('Deg__#4.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1): # Use for Cell 55
+            # if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1):
+            if file.find('Deg10__#4.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1): # Use for Cell 55
             # if file.find('Deg10_2__#1.DTA')!=-1 and file.find('OCV')!=-1 or (file.find('__#1.DTA')!=-1 and file.find('OCV_50')!=-1 and file.find('Bias')==-1 and file.find('Ahp')==-1): # Use for Cell 44 Continuation (Switch Deg10_3__1 to Deg10_2__1 for the inbetween sect)
                 file1 = os.path.join(folder_loc,file)
 
@@ -355,8 +355,8 @@ def get_init_v(folder_loc:str, fc:bool = True) -> float:
 
     if fc == True:
         for file in files:
-            if file.find('Deg__#1.DTA')!=-1 and file.find('GS')!=-1:
-            # if file.find('Deg10__#4.DTA')!=-1 and file.find('GS')!=-1: # Use for Cell 55
+            # if file.find('Deg__#1.DTA')!=-1 and file.find('GS')!=-1:
+            if file.find('Deg10__#4.DTA')!=-1 and file.find('GS')!=-1: # Use for Cell 55
             # if file.find('Deg10_4__#1.DTA')!=-1 and file.find('GS')!=-1: # Use for Cell 44 Continuation (Switch Deg10_3 to Deg10_4 for the inbetween sect)
 
                 file1 = os.path.join(folder_loc,file)

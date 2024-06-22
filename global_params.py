@@ -47,4 +47,3 @@ font_dir = [lato]
 # mpl.rcParams['font.sans-serif'] = ['lato']
 # print(mpl.rcParams['font.sans-serif'])
 
-

@@ -25,6 +25,29 @@ from .plotting import plot_peiss, plot_ivfcs
 from .convenience import excel_datasheet_exists, append_drt_peaks
 from .data_formatting import peis_data
 
+' Plotting params '
+spine_thickness = 1.3
+txt_spine_color = '#212121'  #'#212121' # 'black' #333333
+plt.rcParams.update({
+    'axes.linewidth': spine_thickness,        # Spine thickness
+    'xtick.major.width': spine_thickness,     # Major tick thickness for x-axis
+    'ytick.major.width': spine_thickness,     # Major tick thickness for y-axis
+    'xtick.major.size': spine_thickness * 3,      # Major tick length for x-axis
+    'ytick.major.size': spine_thickness * 3,      # Major tick length for y-axis
+    
+    'axes.grid': False,           # Add grid lines
+    'grid.alpha': 0.4,           # Grid lines transparency
+    
+    'font.family': 'sans-serif',
+
+    'text.color': txt_spine_color,                   # Color for all text
+    'axes.labelcolor': txt_spine_color,              # Color for axis labels
+    'axes.edgecolor': txt_spine_color,               # Color for axis spines
+    'xtick.color': txt_spine_color,                  # Color for x-axis tick labels and ticks
+    'ytick.color': txt_spine_color,                  # Color for y-axis tick labels and ticks
+})
+
+
 def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = True, plot_drt:bool = True,
                     drt_peaks:bool = True, thickness:float = 0, rp_plt_type:str = 'ln', re_fit:bool = False,
                     legend_loc:str = 'outside', drtp_leg_loc_ots:bool = False, reverse = False, peaks_to_fit:int = 'best_id',
@@ -271,20 +294,28 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
 
     elif exists == True: # Importing the dataframe with the lists if it does already exist and initializing lists
         df = pd.read_excel(excel_file,sheet_name)
+        
         # --- initializing lists
         tk_1000 = df['tk_1000 (1000/k)'].values
         ah_cond = df['ln(sigma*T) (SK/cm)'].values
         ah_ohmic_asr = df['ln(ohmic*cm^2/T)'].values
         rp_asr = df['Polarization Resistance ASR (ohm*cm^2)'].values
         ah_rp = df['ln(ohm*cm^2/T)'].values
+        ohmic = df['Ohmic Resistance (ohm)'].values
 
     ' --- Making the Ohmic Resistance Arrhenius Plot --- '
+    # - General formatting
+    ax_title_fs = 18
+    ax_tl_fs = ax_title_fs * 0.85
+    tbl_fs = ax_title_fs * 0.75
+    plt.rc('font', size=tbl_fs)
+
     if thickness > 0:
         fig_ohmic = plt.figure()
         plt.rc('font', size=14)
         ax1 = fig_ohmic.add_subplot(111)
         axy2 = ax1.twiny()
-        ax1.plot(tk_1000,ah_cond,'ko')
+        ax1.plot(tk_1000,ah_cond,'o',markersize=10, color=txt_spine_color)
 
         # - Aligning the top axes tick marks with the bottom and converting to celcius
         def tick_function(X):
@@ -303,11 +334,12 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
 
         # - linear Fit:
         m, b, r, p_value, std_err = scipy.stats.linregress(tk_1000, ah_cond)
-        plt.plot(tk_1000, m*tk_1000+b,'r')
+        plt.plot(tk_1000, m*tk_1000+b,'r',lw=spine_thickness*1.6)
 
         # - creating and formatting table:
         row_labels = ['Intercept','Slope','r squared']
-        table_values = [[round(b,3)],[round(m,3)],[round(r**2,3)]]
+        decimals = 2
+        table_values = [[round(b,decimals)],[round(m,decimals)],[round(r**2,decimals+1)]]
         table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower center',rowColours= ['deepskyblue','deepskyblue','deepskyblue'])
         table.scale(1,1.6)
 
@@ -327,38 +359,54 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
 
     elif thickness == 0:
         fig_ohmic = plt.figure()
-        plt.rc('font', size=14)
+        
         ax1 = fig_ohmic.add_subplot(111)
         ax2 = ax1.twiny()
-        ax1.plot(tk_1000,ah_ohmic_asr,'ko')
+        ax1.plot(tk_1000,ah_ohmic_asr,'o',markersize=10, color=txt_spine_color)
 
         # - Aligning the top axes tick marks with the bottom and converting to celcius
         def tick_function(X):
             V = (1000/X)-273
             return ["%.0f" % z for z in V]
         ax2.set_xticks(tk_1000)
-        ax2.set_xticklabels(tick_function(tk_1000))
+        ax2.set_xticklabels(tick_function(tk_1000),fontsize=ax_tl_fs)
+
+        # # - Creating and Aligning the right axes with the left axes:
+        # axy2 = ax2.twinx()
+        # def tick_function(X):
+        #     V = np.exp(np.array(X)) * (273+np.array(temps))
+        #     return ["%.2f" % z for z in V]
+        # axy2.set_yticks(ah_ohmic_asr)
+        # axy2.set_yticklabels(tick_function(ah_ohmic_asr),fontsize=ax_tl_fs)
+        # axy2.set_ylabel('R$_\mathrm{ohmic}$ (\u03A9 cm$^2$)', fontsize = ax_title_fs)
 
         # - linear Fit:
         m, b, r, p_value, std_err = scipy.stats.linregress(tk_1000, ah_ohmic_asr)
-        plt.plot(tk_1000, m*tk_1000+b,'r')
+        plt.plot(tk_1000, m*tk_1000+b,'r',lw=spine_thickness*1.6)
 
         # - Creating and formatting table:
         row_labels = ['Intercept','Slope','r squared']
-        table_values = [[round(b,3)],[round(m,3)],[round(r**2,3)]]
+        decimals = 2
+        table_values = [[round(b,decimals)],[round(m,decimals)],[round(r**2,decimals+1)]]
         table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower right',rowColours= ['lightblue','lightblue','lightblue'])
         table.scale(1,1.6)
 
         # - Axis labels:
-        ax1.set_xlabel('1000/T (1/K)')
-        ax2.set_xlabel('Temperature (\u00B0C)')
-        ax1.set_ylabel('ln(\u03A9$_\mathrm{ohmic} $cm$^2$/T) (\u03A9 cm$^2$/K)')
+        ax1.set_xlabel('1000/T (1/K)', fontsize = ax_title_fs)
+        ax2.set_xlabel('Temperature (\u00B0C)', fontsize = ax_title_fs)
+        ax1.set_ylabel('ln(ASR$_\mathrm{ohmic}$/T) (\u03A9 cm$^2$/K)', fontsize = ax_title_fs)
+
+        # - Excessive formatting:
+        ax1.spines['right'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        ax1.tick_params(axis='both', which='major', labelsize=ax_tl_fs)
 
         # - Calculating and printing activation energy
         k = 8.617*10**-5 #boltzmanns constant in Ev/K
         Eact = round(m*k*(1000),3) # this gives the activation energy in eV
         Eacts = f'{Eact}'
-        fig_ohmic.text(0.65,0.33,r'$E_a$ ='+Eacts+'eV')
+        fig_ohmic.text(0.69,0.35,r'$E_a$ ='+Eacts+'eV',fontsize=ax_tl_fs) 
+        # Set to 0.6 if including ohmic axis 0.68 if not
 
         plt.tight_layout()
 
@@ -370,57 +418,75 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         ax1 = fig.add_subplot(111)
         ax2 = ax1.twiny() #creates a new x axis that is linked to the first y axis
         new_tick_locs = x 
-        #plt.yscale('log')
-        ax1.semilogy(x,y,'ko')
+        ax1.semilogy(x,y,'o',markersize=10, color=txt_spine_color)
+        
         def tick_function(X):
             V = (1000/X)-273
             return ["%.0f" % z for z in V]
         ax2.set_xticks(new_tick_locs)
         ax2.set_xticklabels(tick_function(new_tick_locs))
-        #linear Fit:
+        
+        # - linear Fit:
         m, b, r, p_value, std_err = scipy.stats.linregress(x, np.log10(y))
-        plt.plot(x, 10**(m*x+b),'r')
-        #creating table:
+        plt.plot(x, 10**(m*x+b),'r',lw=spine_thickness*1.6)
+        
+        # - creating table:
         row_labels = ['Intercept','Slope','r squared']
-        table_values = [[round(b,3)],[round(m,3)],[round(r**2,3)]]
+        decimals = 2
+        table_values = [[round(b,decimals)],[round(m,decimals)],[round(r**2,decimals+1)]]
         table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower right',rowColours= ['gold','gold','gold'])
         table.scale(1,1.6)
-        #Axis labels:
-        ax1.set_xlabel('1000/T (1/K)')
-        ax2.set_xlabel('Temperature (\u00B0C)')
-        ax1.set_ylabel('Rp ASR(\u03A9*$cm^2$)')
+        
+        # - Axis labels:
+        ax1.set_xlabel('1000/T (1/K)', fontsize = ax_title_fs)
+        ax2.set_xlabel('Temperature (\u00B0C)', fontsize = ax_title_fs)
+        ax1.set_ylabel('Rp ASR(\u03A9*$cm^2$)', fontsize = ax_title_fs)
         plt.tight_layout()
 
     elif rp_plt_type == 'ln':
         x = tk_1000
         y = ah_rp
+
+        # - Initializing figure and plotting
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
         ax2 = ax1.twiny() #creates a new x axis that is linked to the first y axis
         new_tick_locs = x #np.array([1.114,1.145,1.179,1.22,1.253,1.294])
-        ax1.plot(x,y,'ko')
+        ax1.plot(x,y,'o',markersize=10, color=txt_spine_color)
+        
+        # - Adjusting ax2 ticks
         def tick_function(X):
             V = (1000/X)-273
             return ["%.0f" % z for z in V]
         ax2.set_xticks(new_tick_locs)
-        ax2.set_xticklabels(tick_function(new_tick_locs))
-        #linear Fit:
+        ax2.set_xticklabels(tick_function(new_tick_locs),fontsize=ax_tl_fs)
+        
+        # - linear Fit:
         m, b, r, p_value, std_err = scipy.stats.linregress(x, y)
-        plt.plot(x, (m*x+b),'r')
-        #creating table:
+        plt.plot(x, (m*x+b),'r',lw=spine_thickness*1.6)
+        
+        # - creating table:
         row_labels = ['Intercept','Slope','r squared']
-        table_values = [[round(b,3)],[round(m,3)],[round(r**2,3)]]
+        decimals = 2
+        table_values = [[round(b,decimals)],[round(m,decimals)],[round(r**2,decimals+1)]]
         table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower right',rowColours= ['gold','gold','gold'])
         table.scale(1,1.6)
-        #Axis labels:
-        ax1.set_xlabel('1000/T (1/K)')
-        ax2.set_xlabel('Temperature (\u00B0C)')
-        ax1.set_ylabel('ln(R$_p$ cm$^2$/T) (\u03A9 cm$^2$/K)')
-        #Calculating and printing activation energy
+        
+        # - Axis labels:
+        ax1.set_xlabel('1000/T (1/K)', fontsize=ax_title_fs)
+        ax2.set_xlabel('Temperature (\u00B0C)', fontsize=ax_title_fs)
+        ax1.set_ylabel('ln(R$_p$ cm$^2$/T) (\u03A9 cm$^2$/K)', fontsize=ax_title_fs)
+
+        # - Excessive formatting:
+        ax1.spines['right'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        ax1.tick_params(axis='both', which='major', labelsize=ax_tl_fs)
+        
+        # - Calculating and printing activation energy
         k = 8.617*10**-5 #boltzmanns constant in Ev/K
         Eact = round(m*k*(1000),3) # this gives the activation energy in eV
         Eacts = f'{Eact}'
-        fig.text(0.65,0.33,r'$E_a$ ='+Eacts+'eV')
+        fig.text(0.68,0.35,r'$E_a$ ='+Eacts+'eV',fontsize=ax_tl_fs)
         plt.tight_layout()
 
     plt.show()

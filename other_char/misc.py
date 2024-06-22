@@ -789,8 +789,6 @@ def st_eds_line_overlay(loc_image:str, loc_data:str, scale:float = 0.5,
     if element_list is not None:
         df = df[element_list]
 
-        print(df)
-
         # def extract_element(filename):
         #     return filename.split('_')[-1].split('.')[0]
         # data = [file for file in data if extract_element(file) in element_list or 'HAADF' in file]

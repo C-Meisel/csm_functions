@@ -543,17 +543,13 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
                 po2_int = int(po2)
                 po2 = str(int(po2_int / 2))
 
-            if flow100 == False and flow200 == False:
+            elif flow100 == False and flow200 == False:
                 po2_int = int(po2)
                 po2 = str(po2_int * 2)
                 nyquist_name = po2 + '% O$_2$'
+            else:
+                nyquist_name =  po2 + '% O$_2$'
 
-            nyquist_name =  po2 + '% O$_2$'
-
-            if flow100 == True:
-                po2_int = int(po2)
-                po2 = str(po2_int * 2)
-                nyquist_name = po2 + '% O$_2$'
 
             # --- Plotting
             plot_peiss(area,nyquist_name,loc,ncol=ncol,legend_loc=legend_loc,cut_inductance = cut_inductance)
@@ -578,17 +574,18 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
                 po2_int = int(po2)
                 po2 = str(int(po2_int / 2))
 
-            if flow100 == False and flow200 == False:
+            elif flow100 == False and flow200 == False:
                 po2_int = int(po2)
                 po2 = str(po2_int * 2)
                 nyquist_name = po2 + '% O$_2$'
 
-            nyquist_name =  po2 + '% O$_2$'
+            else:
+                nyquist_name =  po2 + '% O$_2$'
 
-            if flow100 == True:
-                po2_int = int(po2)
-                po2 = str(po2_int * 2)
-                nyquist_name = po2 + '% O$_2$'
+            # if flow100 == True:
+            #     po2_int = int(po2)
+            #     po2 = str(po2_int * 2)
+            #     nyquist_name = po2 + '% O$_2$'
 
             # --- Inverting the EIS data
             drt = DRT()

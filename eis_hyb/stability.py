@@ -35,7 +35,7 @@ from .convenience import excel_datasheet_exists, quick_dualdrt_plot, append_drt_
 
 ' Font:'
 mpl.rcParams['font.sans-serif'] = 'Arial'
-# plt.rcParams['figure.dpi'] = 600
+# plt.rcParams['figure.dpi'] = 300
 
 ' List of Functions to Re-package:'
 # - fcstb OCV eis plots (May not need to change these 4)
@@ -123,7 +123,7 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
     dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
 
     # --- Getting the end time
-    a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10=True, bias = False, fc_operation = True)
+    a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = True, bias = False, fc_operation = True)
     a10_ocv_eis.sort(key=lambda x:x[1])
     last = a10_ocv_eis[-1][1]
     end_time = int((last-t0)/3600) #hrs
@@ -857,6 +857,160 @@ def plot_r_over_time(cell_folder:str, sheet_name:str, ax = None, cmap = 'viridis
             ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
 
             plt.tight_layout()
+
+def int_drt_stb(tau_split:float, folder_loc:str, start_file:str = 'default', area:float = 0.5,
+                fontsize:int = 24, title=None, save_plot:str=None):
+    '''
+    Inverts EIS data taken to a stability test, then splits the DRT at a tau_split
+    after the DRT is split the area under the high and low frequency regions is calculated and stored
+    the stored data is saved and plot
+    Jake helped with the R_hf and R_lf commands
+
+    Parameters
+    ----------
+    tau_split, float:
+        Which tau value to split the data
+        this value demarcates where low and high frequency are defined
+        1e-4 is a good tau value to use for PCFCs at 550C
+    folder_loc, string:
+        The location of the folder that contains the .DTA files to be plotted
+    start_file, string: (default = 'default')
+        Identifies the first file in the stability test. This is used as a time reference
+        If 'default' then the first file taken is used
+        If you want to change the first file, put the loc in place of 'default'
+    area,float: 
+        The active cell area in cm^2
+    save_plot, str: (default = None)
+        If this is not none, the plot will be saved.
+        Save_plot is the file name and path of the saved file.
+    title, str: (default = None)
+        Title of the chart
+    '''
+    # --- gathering relavent info:
+    cell_name = find_cell_name(folder_loc)
+    
+    # - Finding Relavent drt_info
+    t0 = find_start_time(folder_loc = folder_loc, start_file = start_file)
+    
+    # - Getting the end time
+    dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
+    a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = True, bias = False, fc_operation = True)
+    a10_ocv_eis.sort(key=lambda x:x[1])
+    last = a10_ocv_eis[-1][1]
+    end_time = int((last-t0)/3600) #hrs
+
+    # --- Preping to write data to excel
+    excel_name = '_' + cell_name + '_Data.xlsx'
+    excel_file = os.path.join(folder_loc,excel_name)
+    sheet = 'drtdop_hflf_fc_stb'
+
+    exists, writer = excel_datasheet_exists(excel_file,sheet)
+    
+    if exists == False:
+        # ---- Initializing data_lists
+        time_array = np.array([])
+        R_hf_array = np.array([])
+        R_lf_array = np.array([])
+        R_ohmic_array = np.array([])
+
+        for eis in a10_ocv_eis:
+            loc = os.path.join(folder_loc, eis[0]) # creates the full path to the file
+
+            # --- Finding time of the EIS from the start of the degradation test
+            test_time = eis[1]
+            time = round((test_time-t0)/3600) #hrs
+
+            # --- Inverting eis
+            drt = DRT()
+            drt.fit_dop=True
+            df = read_eis(loc)
+            freq,z = get_eis_tuple(df) # Get relavent data from EIS dataframe
+            drt.fit_eis(freq, z)
+
+            # --- Attaining high and low frequency resistances and ohmic resistance:
+            R_hf = drt.integrate_distribution(tau_min=1e-10, tau_max=tau_split, ppd=20)
+            # tau_min just needs to be >= 1 decade below the smallest basis time constant
+            R_hf_asr = R_hf * area
+
+            R_lf = drt.integrate_distribution(tau_min=tau_split, tau_max=1e4, ppd=20)
+            # tau_max just needs to be >= 1 decade above the largest basis time constant 
+            R_lf_asr = R_lf * area
+
+            R_ohmic = drt.predict_r_inf()
+            R_ohmic_asr = R_ohmic * area
+
+            # --- Appending data to lists:
+            time_array = np.append(time_array,time) # hrs
+            R_hf_array = np.append(R_hf_array,R_hf_asr) # Ω * cm^2
+            R_lf_array = np.append(R_lf_array,R_lf_asr) # Ω * cm^2
+            R_ohmic_array = np.append(R_ohmic_array,R_ohmic_asr) # Ω * cm^2
+
+        # -- Writing data to excel
+        df = pd.DataFrame(list(zip(time_array,R_hf_array,R_lf_array,R_ohmic_array)),
+            columns =['Time (Hrs)','R_hf (ohm*cm$^2$)', 'R_lf (ohm*cm$^2$)','R_ohmic (ohm*cm$^2$)'])
+        df.to_excel(writer, sheet_name=sheet, index=False) # Writes this DataFrame to a specific worksheet
+        writer.close() # Close the Pandas Excel writer and output the Excel file.
+
+    # --- Initializing dataframe
+    df = pd.read_excel(excel_file,sheet)
+    df['Rp_tot (ohm*cm$^2$)'] =  df['R_hf (ohm*cm$^2$)'] + df['R_lf (ohm*cm$^2$)']
+
+    # --- Setting variables for convenience
+    x = df['Time (Hrs)']
+    R_hf = df['R_hf (ohm*cm$^2$)']
+    R_lf = df['R_lf (ohm*cm$^2$)']
+    rp = df['Rp_tot (ohm*cm$^2$)']
+    r_ohmic = df['R_ohmic (ohm*cm$^2$)']
+
+    # --- Plotting
+    fig, ax = plt.subplots()
+    ms = 125
+
+    ax.scatter(x, R_hf, label=r'R$_{\mathrm{p,hf}}$', s=ms,edgecolors='w',color = '#d35e1a') # '#CE3631'
+    ax.scatter(x, R_lf, label=r'R$_{\mathrm{p,lf}}$', s=ms,edgecolors='w', color = '#1074b0') # '#3631CE'
+    ax.scatter(x, r_ohmic, label = r'R$_{\mathrm{ohmic}}$', s=ms,edgecolors='w', color = '#169d74') # #31CE36' '#D7BD28'
+
+    # ax.fill_between(x, 0, R_hf, alpha=0.5, label=r'R_{hf}')
+    # ax.fill_between(x, R_hf, R_lf + R_hf, alpha=0.5, label=r'R_{lf}')
+    # ax.fill_between(x, R_lf + R_hf, r_ohmic + R_lf + R_hf, alpha=0.5, label=r'R_{ohmic}')
+
+    # --- Formatting
+    ax.set_ylabel('ASR (\u03A9 cm$^2$)', size = fontsize)
+    ax.set_xlabel('Time (hrs)', size = fontsize)
+    ax.legend(fontsize = fontsize*0.75, frameon=False, handletextpad=0,
+                loc=(0.6,0.5))
+    ax.set_ylim(0)
+
+    if title is not None:
+        x0_center = np.mean(ax.get_xlim())
+        y0_range = ax.get_ylim()[1] - ax.get_ylim()[0]
+        ax.text(x0_center,y0_range*1.05, title, fontsize=fontsize * 1.1, ha='center',va='center')
+
+    # --- Excessive formatting
+    spine_width = 2
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.tick_params(axis='both', which='major', labelsize=fontsize*0.85,
+        width=spine_width ,length=spine_width *3) #changing tick label size
+    for spine in ax.spines.values():
+        spine.set_linewidth(spine_width )
+
+    ax.spines['bottom'].set_bounds(x[0],x.iloc[-1])
+
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
+    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    
+    ax.set_xticks([x[0],x.iloc[-1]])
+    ax.xaxis.labelpad = -20
+
+    if save_plot is not None:
+        fmat = save_plot.split('.', 1)[-1]
+        fig.savefig(save_plot, dpi=300, format=fmat, bbox_inches='tight')
+
+
+
+    plt.tight_layout()
+    plt.show()
 
 
 # > > > > > Functions to aid in the main stability functions
