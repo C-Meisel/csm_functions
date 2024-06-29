@@ -51,7 +51,7 @@ plt.rcParams.update({
 def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bool = True, plot_drt:bool = True,
                     drt_peaks:bool = True, thickness:float = 0, rp_plt_type:str = 'ln', re_fit:bool = False,
                     legend_loc:str = 'outside', drtp_leg_loc_ots:bool = False, reverse = False, peaks_to_fit:int = 'best_id',
-                    drt_model:str='dual'):
+                    drt_model:str='dual',save_figures:str=None):
     '''
     Searches though the folder_loc and separates out the EIS files to be used to plot the arrhenius data.
     The EIS files are matched to their corresponding temperature input from temps.
@@ -108,7 +108,9 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         which type of drt used to analyze the data
         if drt = 'dual' the dual regression model is used to fit the data
         if drt = 'drtdop' then the drtdop model is used to fit the data
-        
+    save_figures, str: (default = None)
+        If this is not none, all 4 figures (EIS, DRT, Ahp_O, and Ahp_Rp) will be saved.
+        Save_eis is the file name and path of the folder to save the figures.
     Return --> None but 2-5 plots are crated and shown, the EIS data gets fit and saved, and the 
     data to make the Arrhenius plots is saved in the cell data excel file (if not already there)
     '''
@@ -158,7 +160,7 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         for c,eis in enumerate(ahp_eis): # Dual DRT Inverting all ahp EIS data
             # - Extracting the temperature data
             temp = str(temps[c])
-            label = temp + '\u00B0C'
+            label = temp + ' \u00B0C'
 
             # ----- Creating DRT instance and prepping EIS for inversion
             full_loc = os.path.join(folder_loc,eis)
@@ -205,9 +207,13 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
                 # -- Plotting
                 if plot_drt == True:
                     color = cmap(color_space[c])
-                    mark_peaks_kw = {'color':color}
+                    mark_peaks_kw = {'color':color,'sizes':[75]}
+                    kwargs = {
+                        'linewidth': 2,
+                    }
                     drt.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=True,
-                                    scale_prefix="", c=color, plot_ci=False, mark_peaks_kw=mark_peaks_kw)
+                                    scale_prefix="", c=color, plot_ci=False,
+                                      mark_peaks_kw=mark_peaks_kw,**kwargs)
                     
             else:
                 print('In order to plot DRT, it must be fit with the dual or the drtdop model') 
@@ -223,9 +229,6 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
 
 
         if plot_drt == True:
-            # - Formatting and showing the data
-            ax.legend(fontsize='x-large')
-
             # - Adding Frequency scale:
             def Tau_to_Frequency(T):
                 return 1 / (2 * np.pi * T)
@@ -233,15 +236,28 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
             freq_ax = ax.secondary_xaxis('top', functions=(Tau_to_Frequency, Tau_to_Frequency))
             
             # - Excessive formatting
-            ax.xaxis.label.set_size('xx-large') 
-            ax.yaxis.label.set_size('xx-large')
-            ax.tick_params(axis='both', labelsize='x-large')
+            ax_title_size = 23
+            tick_label_size = ax_title_size * 0.8
+            legend_txt_size = ax_title_size * 0.7
+
+            ax.legend(fontsize=legend_txt_size,frameon=False,handletextpad=0.5,
+                    handlelength=1)
+
+            ax.xaxis.label.set_size(ax_title_size) 
+            ax.yaxis.label.set_size(ax_title_size)
+            ax.tick_params(axis='both', labelsize=tick_label_size)
             ax.spines['right'].set_visible(False)
 
-            freq_ax.set_xlabel('$f$ (Hz)',size='xx-large')
-            freq_ax.tick_params(axis='x',labelsize='x-large')
+            freq_ax.set_xlabel('$f$ (Hz)',size=ax_title_size)
+            freq_ax.tick_params(axis='x',labelsize=tick_label_size)
             
             plt.tight_layout()
+
+            if save_figures is not None:
+                drt_fig_name = os.path.join(save_figures,'Ahp_DRT.png')
+                fmat = drt_fig_name.split('.', 1)[-1]
+                fig.savefig(drt_fig_name, dpi=300, format=fmat, bbox_inches='tight') 
+
             plt.show()
 
 
@@ -410,12 +426,18 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
 
         plt.tight_layout()
 
+        # - saving the Ohmic Ahp plot
+        if save_figures is not None:
+            ohmic_fig_name = os.path.join(save_figures,'Ohmic_Ahp.png')
+            fmat = ohmic_fig_name.split('.', 1)[-1]
+            fig_ohmic.savefig(ohmic_fig_name, dpi=300, format=fmat, bbox_inches='tight') 
+
     ' --- Making the Polarizatation Resistance Arrhenius Plot --- '
     if rp_plt_type == 'asr':
         x = tk_1000
         y = rp_asr
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
+        fig_rp = plt.figure()
+        ax1 = fig_rp.add_subplot(111)
         ax2 = ax1.twiny() #creates a new x axis that is linked to the first y axis
         new_tick_locs = x 
         ax1.semilogy(x,y,'o',markersize=10, color=txt_spine_color)
@@ -441,15 +463,22 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         ax1.set_xlabel('1000/T (1/K)', fontsize = ax_title_fs)
         ax2.set_xlabel('Temperature (\u00B0C)', fontsize = ax_title_fs)
         ax1.set_ylabel('Rp ASR(\u03A9*$cm^2$)', fontsize = ax_title_fs)
+
         plt.tight_layout()
+
+        # - saving the Rp Ahp plot
+        if save_figures is not None:
+            rp_fig_name = os.path.join(save_figures,'Rp_Ahp.png')
+            fmat = rp_fig_name.split('.', 1)[-1]
+            fig_rp.savefig(rp_fig_name, dpi=300, format=fmat, bbox_inches='tight') 
 
     elif rp_plt_type == 'ln':
         x = tk_1000
         y = ah_rp
 
         # - Initializing figure and plotting
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
+        fig_rp = plt.figure()
+        ax1 = fig_rp.add_subplot(111)
         ax2 = ax1.twiny() #creates a new x axis that is linked to the first y axis
         new_tick_locs = x #np.array([1.114,1.145,1.179,1.22,1.253,1.294])
         ax1.plot(x,y,'o',markersize=10, color=txt_spine_color)
@@ -486,8 +515,15 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         k = 8.617*10**-5 #boltzmanns constant in Ev/K
         Eact = round(m*k*(1000),3) # this gives the activation energy in eV
         Eacts = f'{Eact}'
-        fig.text(0.68,0.35,r'$E_a$ ='+Eacts+'eV',fontsize=ax_tl_fs)
+        fig_rp.text(0.68,0.35,r'$E_a$ ='+Eacts+'eV',fontsize=ax_tl_fs)
+
         plt.tight_layout()
+
+        # - saving the Rp Ahp plot
+        if save_figures is not None:
+            rp_fig_name = os.path.join(save_figures,'Rp_Ahp.png')
+            fmat = rp_fig_name.split('.', 1)[-1]
+            fig_rp.savefig(rp_fig_name, dpi=300, format=fmat, bbox_inches='tight') 
 
     plt.show()
 
@@ -500,10 +536,16 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
 
         # --- Plotting
         for eis in reversed(ahp_eis):
-            label = str(temps[len(ahp_eis)-c-1])+'C'
+            label = str(temps[len(ahp_eis)-c-1])+ ' \u00b0C'#r'$^\circ$C'
             color = cmap(color_space[c])
             plot_peiss(area,label,os.path.join(folder_loc,eis),color=color,legend_loc=legend_loc)
             c = c+1
+
+        # - saving the EIS plots
+        if save_figures is not None:
+            eis_fig_name = os.path.join(save_figures,'Ahp_EIS.png')
+            fmat = eis_fig_name.split('.', 1)[-1]
+            plt.savefig(eis_fig_name, dpi=300, format=fmat, bbox_inches='tight') 
 
         plt.show()
 
@@ -534,7 +576,8 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         plt.tight_layout()
         plt.show()
 
-def arrhenius_iv_curves(folder_loc:str, area:float, temps:list, reverse:bool=False):
+def arrhenius_iv_curves(folder_loc:str, area:float, temps:list, reverse:bool=False, 
+                        leg_cols:int=None, save_plot:str=None):
     '''
     Searches through the folder_loc for hte IV curves taken during arrhenius testing. 
     It plots the iv curve and its corresponding power density curve for each temperature
@@ -552,8 +595,17 @@ def arrhenius_iv_curves(folder_loc:str, area:float, temps:list, reverse:bool=Fal
         If the arrhenius plot was taken in reverse order i.e 500-625C (like my older cells), then set this to true
         This reverses the direction of the cmap to keep the lower temps blue and higher temps red on the DRT and Nyquist plots
         To reiterate if the arrhenisu plot was taken from lowest temp to highest set this to true
+    leg_cols,int: (default is None)
+        how many columns the legend will have. 
+        If none, this will be based of the abount of curves being plot
+        if leg_cols is set to 0, no legend is plot
+        This is passed to the plot_ivfcs function
+    save_plot, str: (default = None)
+        If this is not none, the plot will be saved.
+        Save_plot is the file name and path of the saved file.
+        This is passed to the plot_ivfcs function
 
-    Returns --> Nothin, but plots and shows the IV curves and power density curves for each temperature
+    Returns --> Nothing, but plots and shows the IV curves and power density curves for each temperature
     '''
 
     # --- Finding correct files and sorting
@@ -580,7 +632,9 @@ def arrhenius_iv_curves(folder_loc:str, area:float, temps:list, reverse:bool=Fal
     if reverse == True:
         cmap = plt.cm.get_cmap('coolwarm')
 
-    plot_ivfcs(curves_conditions,print_Wmax=True,cmap=cmap)
+    plot_ivfcs(curves_conditions,print_Wmax=True,cmap=cmap,
+               ppd_y_axis=True,leg_cols=leg_cols,font_size=24,
+               save_plot = save_plot)
 
 def arrhenius_dual_drt_peak(folder_loc:str, tau_low:float, tau_high:float, temps:np.array = None,
                         rmv_temp_r:np.array = None, rmv_temp_l:np.array = None, drt_model:str = 'dual',
