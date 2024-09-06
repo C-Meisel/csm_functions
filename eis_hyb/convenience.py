@@ -238,7 +238,8 @@ def standard_performance(loc:str, jar:str, area:float=0.5, dual_pfrt = True, pea
 
 def plot_drtdop(loc:str, area:float, label:str = None, ax:plt.Axes = None, scale_prefix = "",
                  mark_peaks = True, legend = True, print_resistance:bool=False,
-                 publication:bool = False, save_plot = None, nonneg=True, **kwargs):
+                 publication:bool = False, save_plot = None, nonneg=True,
+                 est_peaks:bool = False, **kwargs):
     '''
     Quicker version to DRT-DOP fit and plot the ensuing DRT spectra.
     This function supports multiple graphs stacked on each other
@@ -272,6 +273,8 @@ def plot_drtdop(loc:str, area:float, label:str = None, ax:plt.Axes = None, scale
         If set to true, the DRT is constrained such that all values are positive
         However if the potential for negative DRT is desired (Such as EC mode fitting)
         then set nonneg to False
+    est_peaks, bool: (default = False)
+        This estimates and plots the DRT peaks
     
     Return --> DRT instance, and it plots and shows one or more plots
     '''
@@ -310,6 +313,9 @@ def plot_drtdop(loc:str, area:float, label:str = None, ax:plt.Axes = None, scale
     plot_ci = False
     # c = None
     mark_peaks_kw = {'sizes':[75]}
+    
+    if est_peaks == True:
+        area = None
 
     if ax == None: # If only one spectra is being plot, create the fig and axis in the function
         solo = True
@@ -320,9 +326,19 @@ def plot_drtdop(loc:str, area:float, label:str = None, ax:plt.Axes = None, scale
     
         fig, ax = plt.subplots()
 
-    drt.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=mark_peaks,
-                           scale_prefix=scale_prefix, plot_ci=plot_ci,
-                            mark_peaks_kw=mark_peaks_kw, **kwargs) # c = c
+        drt.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=mark_peaks,
+                            scale_prefix=scale_prefix, plot_ci=plot_ci,
+                                mark_peaks_kw=mark_peaks_kw, c = c, **kwargs) # c = c
+    else:
+        drt.plot_distribution(tau, ax=ax, area=area,label=label,mark_peaks=mark_peaks,
+                            scale_prefix=scale_prefix, plot_ci=plot_ci,
+                                mark_peaks_kw=mark_peaks_kw, **kwargs) # c = c
+        if est_peaks == True:
+            kwargs = {
+                'linewidth': 2,
+            }
+            drt.plot_peak_distributions(tau=tau,ax=ax, scale_prefix=scale_prefix,
+                                         alpha=0.6,**kwargs)
 
     # - Adding Frequency scale:
     def Tau_to_Frequency(T):
@@ -336,7 +352,7 @@ def plot_drtdop(loc:str, area:float, label:str = None, ax:plt.Axes = None, scale
 
     # - Excessive formatting
     if publication == False:
-        label_size = 23
+        label_size = 22
         tick_size = label_size * 0.85
         ax.xaxis.label.set_size(label_size) 
         ax.yaxis.label.set_size(label_size)
@@ -369,8 +385,6 @@ def plot_drtdop(loc:str, area:float, label:str = None, ax:plt.Axes = None, scale
         freq_ax.tick_params(axis='x',labelsize=tick_size,width=2,length=6)
         freq_ax.spines['top'].set_linewidth(spine_width)
         freq_ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{int(np.log10(x))}'))
-
-
 
     ax.spines['right'].set_visible(False)
     ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=4))
@@ -509,7 +523,7 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
                  o2_dependence:bool=True, drt_peaks:bool=True, print_resistance_values:bool=False,
                   ncol:int=1, legend_loc:str='best', flow100:bool = False, flow200:bool = False, cut_inductance:bool = False,
                   overwrite:bool = False, peaks_to_fit:int = 'best_id', drt_model:str = 'dual',
-                  save_eis:str=None,save_drt:str=None):
+                  save_eis:str=None,save_drt:str=None,save_drt_peaks:str=None):
     '''
     Searches through the folder_loc for all the changes in O2 concentration EIS files.
     Plots the EIS for each concentration in one plot if eis=True and the DRT of each concentration in another if drt=True
@@ -564,8 +578,11 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
         If this is not none, the EIS figure will be saved.
         Save_eis is the file name and path of the saved file.
     save_drt, str: (default = None)
-        If this is not none, , the DRT figure will be saved.
+        If this is not none, the DRT figure will be saved.
         Save_drt is the file name and path of the saved file.
+    save_drt_peaks, str: (default = None)
+        If this is not none, the DRT peaks figure will be saved.
+        Save_drt_peaks is the file name and path of the saved file.
 
     Return --> None, but it plots and shows one or more plots
     '''
@@ -602,9 +619,10 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
             elif flow100 == False and flow200 == False:
                 po2_int = int(po2)
                 po2 = str(po2_int * 2)
-                nyquist_name = po2 + '% O$_2$'
             else:
-                nyquist_name =  po2 + '% O$_2$'
+                pass
+
+            nyquist_name = po2 + '% O$_2$'
 
 
             # --- Plotting
@@ -732,55 +750,55 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
 
         plt.show()
 
-        # >>>>>>>>>>>> Creating DataFrames and adding excel data sheets (or creating the file if need be)'
-        # ------- Cell Resistance Data
-        excel_name = '_' + cell_name + '_Data.xlsx'
-        excel_file = os.path.join(folder_loc,excel_name)
-        sheet_name = 'pO2_' + drt_model
-        exists = False
+    # >>>>>>>>>>>> Creating DataFrames and adding excel data sheets (or creating the file if need be)'
+    # ------- Cell Resistance Data
+    excel_name = '_' + cell_name + '_Data.xlsx'
+    excel_file = os.path.join(folder_loc,excel_name)
+    sheet_name = 'pO2_' + drt_model
+    exists = False
 
-        exists, writer = excel_datasheet_exists(excel_file,sheet_name)
+    exists, writer = excel_datasheet_exists(excel_file,sheet_name)
 
-        if exists == False:
-            df_po2 = pd.DataFrame(list(zip(O2_conc*100,ohmic_asr,rp_asr)),
-                columns =['O2 Concentration (%)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
-            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
-            writer.close() # Close the Pandas Excel writer and output the Excel file.
+    if exists == False:
+        df_po2 = pd.DataFrame(list(zip(O2_conc*100,ohmic_asr,rp_asr)),
+            columns =['O2 Concentration (%)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
+        df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Writes this DataFrame to a specific worksheet
+        writer.close() # Close the Pandas Excel writer and output the Excel file.
 
-        elif exists == True and overwrite == True:
-            df_po2 = pd.DataFrame(list(zip(O2_conc*100,ohmic_asr,rp_asr)),
-                columns =['O2 Concentration (%)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
-            
-            book = load_workbook(excel_file)
-            writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
-            df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
-            writer.close() # Close the Pandas Excel writer and output the Excel file.
+    elif exists == True and overwrite == True:
+        df_po2 = pd.DataFrame(list(zip(O2_conc*100,ohmic_asr,rp_asr)),
+            columns =['O2 Concentration (%)','Ohmic ASR (ohm*cm$^2$)', 'Rp ASR (ohm*cm$^2$)'])
+        
+        book = load_workbook(excel_file)
+        writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+        df_po2.to_excel(writer, sheet_name=sheet_name, index=False) # Extract data to an excel sheet
+        writer.close() # Close the Pandas Excel writer and output the Excel file.
 
-            df_po2 = pd.read_excel(excel_file,sheet_name)
+        df_po2 = pd.read_excel(excel_file,sheet_name)
 
-        # ------- Appending the Peak_fit data to an excel file
-        excel_name = '_' + cell_name + '_Data.xlsx'
-        excel_file = os.path.join(folder_loc,excel_name)
-        peak_data_sheet = 'pO2_' + drt_model + '_DRT_peaks'
-        exists_peaks = False
+    # ------- Appending the Peak_fit data to an excel file
+    excel_name = '_' + cell_name + '_Data.xlsx'
+    excel_file = os.path.join(folder_loc,excel_name)
+    peak_data_sheet = 'pO2_' + drt_model + '_DRT_peaks'
+    exists_peaks = False
 
-        exists_peaks, writer_peaks = excel_datasheet_exists(excel_file,peak_data_sheet)
-    
-        if exists_peaks == False: # Make the excel data list
-            df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
-            writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
-            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+    exists_peaks, writer_peaks = excel_datasheet_exists(excel_file,peak_data_sheet)
 
-        elif exists_peaks == True and overwrite == False: #load the data into a DataFrame
-            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+    if exists_peaks == False: # Make the excel data list
+        df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
+        writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
+        df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
 
-        elif exists_peaks == True and overwrite == True:
-            book = load_workbook(excel_file)
-            writer_peaks = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
-            df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
-            writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
+    elif exists_peaks == True and overwrite == False: #load the data into a DataFrame
+        df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
 
-            df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
+    elif exists_peaks == True and overwrite == True:
+        book = load_workbook(excel_file)
+        writer_peaks = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a',if_sheet_exists='replace') #Creates a Pandas Excel writer using openpyxl as the engine in append mode
+        df_tau_r.to_excel(writer_peaks, sheet_name=peak_data_sheet, index=False) # Extract data to an excel sheet
+        writer_peaks.close() # Close the Pandas Excel writer and output the Excel file.
+
+        df_tau_r = pd.read_excel(excel_file,peak_data_sheet)
 
 
     ' ------ Plotting the Oxygen dependence'
@@ -791,19 +809,35 @@ def po2_plots_dual(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:
 
     ' --- DRT peak plotting --- '
     if drt_peaks == True:
+        fig, ax = plt.subplots()
+
         # ----- plotting
         palette = sns.color_palette('crest_r', as_cmap=True)
-        plot = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df_tau_r, hue='O2 Concentration (%)',palette = palette,s=69)
+        sns.scatterplot(x = 'Tau', y = 'Resistance', data = df_tau_r, hue='O2 Concentration (%)',
+                        palette = palette,s=69, ax=ax)
 
-        # ----- Ascetics stuff
-        sns.set_context("talk")
-        fontsize = 14
-        sns.despine()
-        plot.set_ylabel('ASR (\u03A9 cm$^2$)',fontsize=fontsize)
-        plot.set_xlabel('Time Constant (\u03C4/s)',fontsize=fontsize)
-        plot.set(xscale='log')
+        # - Excessive formatting
+        ax_title_size = 23
+        tick_label_size = ax_title_size * 0.8
+        legend_txt_size = ax_title_size * 0.6
 
+        # ax.legend(fontsize=legend_txt_size,frameon=False,handletextpad=0.5,
+        #           handlelength=1,loc='center left',bbox_to_anchor=(0.95,0.5))
+        ax.legend(fontsize=legend_txt_size,frameon=True,handletextpad=0.5,
+                  handlelength=1,title=r"$p\mathrm{O_2}$",title_fontsize=legend_txt_size)
+        ax.set_ylabel('ASR (\u03A9 cm$^2$)',fontsize=ax_title_size)
+        ax.set_xlabel('Time Constant (\u03C4/s)',fontsize=ax_title_size)
+        ax.tick_params(axis='both', labelsize=tick_label_size)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.set(xscale='log')
+    
         plt.tight_layout()
+
+        if save_drt_peaks is not None:
+            fmat_drt = save_drt_peaks.split('.', 1)[-1]
+            fig.savefig(save_drt_peaks, dpi=300, format=fmat_drt, bbox_inches='tight') 
+
         plt.show()
 
 def po2_plots_save(folder_loc:str, fit_path:str, area:float, eis:bool=True, drt:bool=True,
@@ -1566,7 +1600,7 @@ def ec_bias_plots_dual(folder_loc:str, area:float, eis:bool=True,
 
 def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.array = None,
                         rmv_concs_r:np.array = None, rmv_concs_l:np.array = None,plot_all=False,
-                        drt_model:str = 'dual',print_c:bool = True):
+                        drt_model:str = 'dual',print_c:bool = True,save_fig:str=None):
     '''
     This function is meant to linearly fit a single DRT peak across an oxygen concentration range
     This function can only be used after the po2_plots function
@@ -1595,6 +1629,9 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
         if drt = 'drtdop' then the drtdop model is used to fit the data
     print_c , bool: (default = False)
         if desired, the capacitance of each peak is calculated and fit
+    save_fig, str: (default = None)
+        If this is not none, the figure will be saved.
+        Save_fig is the file name and path of the saved file.
 
     Returns --> The slope of ln(1/asr)/ln(O2%), and a plot of the DRT peak fit and the activation energy is calculated and printed on the plot
     '''
@@ -1697,12 +1734,15 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
 
     fig, ax1 = plt.subplots()
     ax2 = ax1.twiny()
-    ax1.plot(x,y,'ko')
+    ax1.plot(x,y,'ko',markersize=10)
 
     # - Setting font sizes
-    label_fontsize = 'x-large'
-    tick_fontsize = 'large'
-    text_fontsize = 'x-large'
+    label_fontsize = 21
+    tick_fontsize = label_fontsize * 0.8
+    text_fontsize = label_fontsize * 0.7
+    
+    ax1.spines['right'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
 
     # - Setting ticks
     ax1.set_xticks(x, np.round(x,2), fontsize=tick_fontsize)
@@ -1715,7 +1755,7 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
     mr,br = np.polyfit(ln_o2,ln_rp_asr,1)
     mr,br, r, p_value, std_err = scipy.stats.linregress(x, y)
     fit_r = mr*ln_o2 + br
-    ax1.plot(x, fit_r,'g')
+    ax1.plot(x, fit_r,'g',lw=2)
 
     # - Axis labels:
     ax1.set_xlabel('ln(O$_2$) (%)',fontsize=label_fontsize)
@@ -1723,44 +1763,50 @@ def o2_dual_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
     ax1.set_ylabel('ln(1/ASR) (S/cm$^2$)',fontsize=label_fontsize)
 
     # - Creating table:
-    row_labels = ['r squared']
+    row_labels = [r'  R$^2$  ']
     slopes = f'{round(mr,2)}'
     table_values = [[round(r**2,3)]] # $\\bf{round(mr,2)}$
     color = 'palegreen'
 
     if mr >= 0:
-        table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower right',
+        table = plt.table(cellText=table_values,colWidths = [.15],rowLabels=row_labels,loc = 'lower right',
             rowColours= [color,color])
+        table.set_fontsize(text_fontsize)
     else:
         table = plt.table(cellText=table_values,colWidths = [.2]*3,rowLabels=row_labels,loc = 'lower center',
             rowColours= [color,color])
+        table.set_fontsize(text_fontsize)
 
-    table.scale(1,1.6)
+    table.scale(1,3)
     
     # - Printing figure text
     mr_str = f'{round(mr,2)}'
     # - Time constants
-    tau_lows = f'{min_tau:.2e}'
-    tau_highs = f'{max_tau:.2e}'
+    tau_lows = f'{min_tau:.1e}'
+    tau_highs = f'{max_tau:.1e}'
     # - Capacitances
     avg_c = data['Capacitance (F/cm^2)'].mean()
     std_c = data['Capacitance (F/cm^2)'].std()
-    avg_cs = f'{avg_c:.2e}'
-    std_cs = f'{std_c:.2e}'
+    avg_cs = f'{avg_c:.1e}'
+    std_cs = f'{std_c:.1e}'
 
     if mr >=0:
-        fig.text(0.68,0.22,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold',fontsize = tick_fontsize)
-        fig.text(0.17,0.81,'DRT peak between '+tau_lows+'(\u03C4/s) and '+tau_highs+'(\u03C4/s)',fontsize = tick_fontsize)
-        fig.text(0.17,0.76,'Avg C: '+avg_cs+r'(F/cm$^2$) +/- '+std_cs,fontsize = tick_fontsize)
+        fig.text(0.69,0.30,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold',fontsize = text_fontsize)
+        fig.text(0.19,0.79,'DRT peak between '+tau_lows+' (\u03C4/s) and '+tau_highs+' (\u03C4/s)',fontsize = text_fontsize)
+        fig.text(0.19,0.74,'Avg C: '+avg_cs+r' (F/cm$^2$) +/- '+std_cs,fontsize = text_fontsize)
 
     else:
-        fig.text(0.37,0.22,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold',fontsize = tick_fontsize)
-        fig.text(0.38,0.81,'DRT peak between '+tau_lows+'(\u03C4/s) and '+tau_highs+'(\u03C4/s)',fontsize = tick_fontsize)
-        fig.text(0.38,0.76,'Avg C: '+avg_cs+r'(F/cm$^2$) +/- '+std_cs,fontsize = tick_fontsize)
+        fig.text(0.37,0.22,r'ASR$_\mathrm{P}$ Slope = '+mr_str,weight='bold',fontsize = text_fontsize)
+        fig.text(0.38,0.81,'DRT peak between '+tau_lows+' (\u03C4/s) and '+tau_highs+' (\u03C4/s)',fontsize = text_fontsize)
+        fig.text(0.38,0.76,'Avg C: '+avg_cs+r' (F/cm$^2$) +/- '+std_cs,fontsize = text_fontsize)
 
 
     plt.tight_layout()
 
+    if save_fig is not None:
+        fmat_drt = save_fig.split('.', 1)[-1]
+        fig.savefig(save_fig, dpi=300, format=fmat_drt, bbox_inches='tight') 
+    
     plt.show()
 
     return(mr)
@@ -1920,6 +1966,7 @@ def o2_pfrt_drt_peaks(folder_loc:str, tau_low:float, tau_high:float, concs:np.ar
 
     return(mr)
 
+# ----- Helper Functions
 def excel_datasheet_exists(excel_file:str,sheet_name:str):
     '''
     Finds if the excel file exists and if the sheet name exists in the excel file

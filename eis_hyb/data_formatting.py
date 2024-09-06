@@ -399,7 +399,7 @@ def cut_induct(df):
     
     Return --> the new dataframe without the negative values in the beginning
     '''
-    cut_inductance_points = 0
+    cut_inductance_points = 0 # 0
     for i,row in df.iterrows():
         if df.iloc[i]['ohm.1'] < 0:
             cut_inductance_points +=1

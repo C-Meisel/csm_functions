@@ -553,7 +553,7 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg
                 +'\033[1m'+ max_ws + '\033[0m'+' W/cm\u00b2')
 
     # ----- Plot Formatting:
-    ax_label_size = font_size # default is 22
+    ax_label_size = font_size # default is 21
     tick_label_size = ax_label_size * 0.8
     legend_txt_size = ax_label_size * 0.7
 
@@ -577,7 +577,7 @@ def plot_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg
     if leg_cols == None:
         num_curves = len(curves_conditions)
         if num_curves <=4:
-            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize=legend_txt_size,ncol=num_curves,handletextpad=0.02,columnspacing=1)
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize=legend_txt_size,ncol=num_curves,handletextpad=0.02,columnspacing=1,frameon=False)
         elif num_curves <=8:
             ncol = int(round(num_curves/2))
             ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize=legend_txt_size,ncol=ncol,handletextpad=0.02,columnspacing=1)
@@ -965,7 +965,6 @@ def plot_galvanoStb(folder_loc:str, fit:bool = True, fontsize:int = 20, smooth:b
             m_mvr = round(m_mv,decimals)
             m_mvs = "{:.{}f}".format(m_mvr, decimals)
 
-
             m_volt = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
             m_voltr = round(m_volt,decimals)
             m_volts = "{:.{}f}".format(m_voltr, decimals)
@@ -1205,19 +1204,19 @@ def plot_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsize 
             m_voltr = round(m_volt,decimals)
             m_volts = "{:.{}f}".format(m_voltr, decimals)
 
-            m_over = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
-            m_overr= round(m_over,decimals)
-            m_overs = "{:.{}f}".format(m_overr, decimals)
+            # m_over = ((m * 1000)/(ocv-init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            # m_overr= round(m_over,decimals)
+            # m_overs = "{:.{}f}".format(m_overr, decimals)
 
 
             if publication == False: 
                 plt.figtext(0.39,0.27, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
                 plt.figtext(0.39,0.20, m_volts + ' %/khrs',weight='bold',size='xx-large')
-                plt.figtext(0.39,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
+                # plt.figtext(0.39,0.13, m_overs + ' %η/khrs',weight='bold',size='xx-large')
             elif publication == True:
                 ax.text(x0_center,y0_range*0.28, m_mvs + ' mV/khrs',weight='bold',size=fontsize, ha='center', va='center')
                 ax.text(x0_center,y0_range*0.17, m_volts + ' %/khrs',weight='bold',size=fontsize, ha='center', va='center')
-                ax.text(x0_center,y0_range*0.06, m_overs + ' %η/khrs',weight='bold',size=fontsize, ha='center', va='center')
+                # ax.text(x0_center,y0_range*0.06, m_overs + ' %η/khrs',weight='bold',size=fontsize, ha='center', va='center')
 
     # --- Printing the label on the chart
     if label is not None:
@@ -1409,20 +1408,20 @@ def plot_EC_ocvStb(folder_loc:str, fit:bool=True, first_file = 'default', fontsi
 
             m_mv = m * 1000000 #Converting the slope into a mV per khrs (*1000 to get from mV to V, *1000 to get to khrs,*-1 for degradation)
             m_p = ((m * 1000)/(init_v))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v to get stb/khrs, and multiply by 100 to get %/khrs)
-            m_o = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
+            # m_o = ((m * 1000)/(init_v-ocv))*100 # Converting the slope into a mV per khrs = * 1000, dividing by init_v-ocv to get η/khrs, and multiply by 100 to get %η/khrs))
             
             m_mvs = f'{round(m_mv,decimals)}'
             m_ps = f'{round(m_p,decimals)}'
-            m_os = f'{round(m_o,decimals)}'
+            # m_os = f'{round(m_o,decimals)}'
 
             if publication == False: 
                 plt.figtext(0.39,0.27, m_mvs + ' mV/khrs',weight='bold',size='xx-large')
                 plt.figtext(0.39,0.20, m_ps + ' %/khrs',weight='bold',size='xx-large')
-                plt.figtext(0.39,0.13, m_os + ' %η/khrs',weight='bold',size='xx-large')
+                # plt.figtext(0.39,0.13, m_os + ' %η/khrs',weight='bold',size='xx-large')
             elif publication == True:
                 ax.text(x0_center,y0_range*0.28, m_mvs + ' mV/khrs',weight='bold',size=fontsize, ha='center', va='center')
                 ax.text(x0_center,y0_range*0.17, m_ps + ' %/khrs',weight='bold',size=fontsize, ha='center', va='center')
-                ax.text(x0_center,y0_range*0.06, m_os + ' %η/khrs',weight='bold',size=fontsize, ha='center', va='center')
+                # ax.text(x0_center,y0_range*0.06, m_os + ' %η/khrs',weight='bold',size=fontsize, ha='center', va='center')
 
     # --- Printing the label on the chart
     if label is not None:
@@ -2159,7 +2158,8 @@ def curtin_echem_plotting(loc:str, area:float = None, CD_at_V:float = 1.3, time_
 
     return()
 
-def curtin_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,leg_cols:int=None):
+def curtin_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,
+                 leg_cols:int=None, save_plot:str=None, font_size:int = 21):
     '''
     Plots data gathered using the labview testing software developed by Prof. Shao at Curtin university
     The data is gathered using a Kiethley
@@ -2176,7 +2176,14 @@ def curtin_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,l
         If a colormap is defined here it will be used for the plots
     leg_cols,int: (default is None)
         how many columns the legend will have. If none, this will be based of the abount of curves being plot
-
+    save_plot, str: (default = None)
+        If this is not none, the plot will be saved.
+        Save_plot is the file name and path of the saved file.
+    font_size, int: (default = 21)
+        font_size of the axis labels
+        all other font is a function of the axis label font
+        Tick labels are scaled to 80% of this value
+        legend text is scaled to 70% of this value
     Return --> none but it plots the figure and shows it
     '''
     fig,ax1 = plt.subplots() # Initializing plot
@@ -2241,30 +2248,45 @@ def curtin_ivfcs(curves_conditions:tuple, print_Wmax:bool=False, cmap:str=None,l
                 +'\033[1m'+ max_ws + '\033[0m'+' W/cm\u00b2')
 
     # ----- Plot Formatting:
-    ax1.set_xlabel('Current Density (A/cm$^2$)',fontsize='xx-large')
-    ax1.set_ylabel('Voltage (V)',fontsize='xx-large')
-    ax1.tick_params(axis='both', which='major', labelsize='x-large')
+    ax_label_size = font_size # Default is 21
+    tick_label_size = ax_label_size * 0.8
+    legend_txt_size = ax_label_size * 0.7
+    ax1.set_xlabel('Current Density (A/cm$^2$)',fontsize=ax_label_size)
+    ax1.set_ylabel('Voltage (V)',fontsize=ax_label_size)
+    ax1.tick_params(axis='both', which='major', labelsize=tick_label_size)
+    # ax1.set_ylim(0.94,1.04) # For thesis plotting
+    # ax1.set_xlim(0,0.150)
 
-    ax2.set_ylabel('Power Density (W/cm$^2$)',fontsize='xx-large')  # we already handled the x-label with ax1
-    ax2.tick_params(axis='both', which='major', labelsize='x-large')
+    ax2.set_ylabel('Power Density (W/cm$^2$)',fontsize=ax_label_size)  # we already handled the x-label with ax1
+    ax2.tick_params(axis='both', which='major', labelsize=tick_label_size)
+
+    # - Excessive formatting:
+    ax1.spines['top'].set_visible(False)
+    # ax1.spines['right'].set_visible(False) # For Thesis plotting zoom in
+    ax2.spines['top'].set_visible(False)
 
     # --- Legend Formatting
     if leg_cols == None:
         num_curves = len(curves_conditions)
         if num_curves <=4:
-            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize=legend_txt_size,ncol=num_curves,handletextpad=0.02,columnspacing=1,frameon=False)
         elif num_curves <=8:
             ncol = int(round(num_curves/2))
-            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=ncol,handletextpad=0.02,columnspacing=1)
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize=legend_txt_size,ncol=ncol,handletextpad=0.02,columnspacing=1)
         elif num_curves <=12:
             ncol = int(round(num_curves/3))
-            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=num_curves,handletextpad=0.02,columnspacing=1)
+            ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize=legend_txt_size,ncol=num_curves,handletextpad=0.02,columnspacing=1)
     else:
-        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize='large',ncol=leg_cols,handletextpad=0.02,columnspacing=1)
+        ax2.legend(loc='lower center',bbox_to_anchor=(0.5,1.0),fontsize=legend_txt_size,ncol=leg_cols,handletextpad=0.02,columnspacing=1)
 
 
     plt.subplots_adjust(top=0.8)
     plt.tight_layout()
+        
+    if save_plot is not None:
+        fmat = save_plot.split('.', 1)[-1]
+        fig.savefig(save_plot, dpi=300, format=fmat, bbox_inches='tight')
+
     plt.show()
 
 def curtin_ivecs(loc:str, area:float = None, label:str = None):

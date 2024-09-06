@@ -45,13 +45,13 @@ mpl.rcParams['font.sans-serif'] = 'Arial'
 # - May need to re-re-make functions to save the fits (then I will never re-package again lol)
 
 
-def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
+def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default', mode:str = 'fc',
                         a10:bool=True, eis:bool=True, plot_drt:bool=True, 
                         resistance_plot:bool= True, drt_peaks:bool = True, ncol:int=1,
                         legend_loc:str='outside', cbar = True,
                         peaks_to_fit = 'best_id',cmap=None,drt_model:str = 'dual',
                         save_eis:str=None, save_drt:str=None,
-                        subfig_eis:str=None, subfig_drt:str=None, publication:bool = False):
+                        subfig_eis:str=None, subfig_drt:str=None, publication:bool = False,):
     '''
     Plots the EIS and the fit DRT of a cell taken at OCV during a long term stability test. This function
     complements a Gamry sequence that I use to test the cell stability over time in fuel cell mode. 
@@ -66,6 +66,11 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
         The active cell area in cm^2
     start_file, str: (default = 'default')
         The name of the first file taken in the stability sequence
+    mode, str: (default = 'fc')
+        The mode of operation the cell was stability tested in
+        Only set to 'fc' or 'ec'
+        set to 'fc' for fuel cell mode testing
+        set to 'ec' for electrolysis cell mode testing
     a10, bool: (After 10 hours) (default = True)
         Whether or not to plot the first 10 hours of the test.
         if True, then only hours 10 onward are plotted
@@ -116,21 +121,31 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
 
     Return --> None but one or more plots are created and shown
     '''
+    # --- Setting variable for the correct mode:
+    if mode == 'fc':
+        fc_opp = True
+
+    elif mode == 'ec':
+        fc_opp = False
+
+    else:
+        print('mode must be set to either \'fc\' or \'ec\'')
+
     # --- Finding relavent information
-    t0 = find_start_time(folder_loc = folder_loc, start_file = start_file)
+    t0 = find_start_time(folder_loc = folder_loc, start_file = start_file, mode = mode)
     cell_name = find_cell_name(folder_loc)
         
     dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
 
     # --- Getting the end time
-    a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = True, bias = False, fc_operation = True)
+    a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = True, bias = False, fc_operation = fc_opp)
     a10_ocv_eis.sort(key=lambda x:x[1])
     last = a10_ocv_eis[-1][1]
     end_time = int((last-t0)/3600) #hrs
 
     if eis == True:
         if a10 == False: #Plot the EIS for the first 10 hours in 1 hr increments (the increment it is taken in)
-            f10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = False, bias = False, fc_operation = True) # Finding correct EIS files and formatting
+            f10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = False, bias = False, fc_operation = fc_opp) # Finding correct EIS files and formatting
 
             'Plotting EIS'
             for peis in f10_ocv_eis:
@@ -147,7 +162,7 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
 
         if a10 == True: # Plot the DRT after 10 hours in 10 hour increments (the increment it is taken in)
             'Finding and formatting'
-            a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = True, bias = False, fc_operation = True)
+            a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = True, bias = False, fc_operation = fc_opp)
 
             # --- Getting the end time
             a10_ocv_eis.sort(key=lambda x:x[1])
@@ -156,7 +171,10 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
 
             'Setting up an array for the color map'
             if cmap == None:
-                cmap = plt.cm.get_cmap('viridis', end_time)
+                if mode == 'fc':
+                    cmap = plt.cm.get_cmap('viridis', end_time)
+                else:
+                    cmap = plt.cm.get_cmap('cmr.neon', end_time)
             else:
                 cmap=cmap
 
@@ -192,7 +210,7 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
                     ax.tick_params(axis='both', which='major', labelsize=tick_size, width = 2, length = 6) 
                     spine_width = 2
 
-                ax.axhline(y=0,color='k', linestyle='-.',linewidth=spine_width) # plots line at 0 #D2492A is the color of Mines orange
+                ax.axhline(y=0,color='#212121', linestyle='-.',linewidth=spine_width) # plots line at 0 #D2492A is the color of Mines orange
                 ax.axis('scaled') #Keeps X and Y axis scaled 1 to 1
                 ax.spines['top'].set_visible(False)
                 ax.spines['right'].set_visible(False)
@@ -231,7 +249,7 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
         fig, ax = plt.subplots() #initializing plots for DRT
 
         if a10 == False: #Plot the DRT for the first 10 hours in 1 hr increments (the increment it is taken in)
-            f10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = False, bias = False, fc_operation = True)
+            f10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10 = False, bias = False, fc_operation = fc_opp)
 
             for eis in f10_ocv_eis: # Calling fits and plotting
                 # --- Finding and formatting
@@ -261,10 +279,13 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
                 linewidth = 2
 
             # --- Selecting eis at OCV after 10 hours of operation  
-            a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10=True, bias = False, fc_operation = True)
+            a10_ocv_eis = select_stb_eis(folder_loc, dta_files, a10=True, bias = False, fc_operation = fc_opp)
             
             # --- Setting up an array for the color map
-            cmap = plt.cm.get_cmap('viridis')
+            if mode == 'fc':
+                cmap = plt.cm.get_cmap('viridis')
+            else:
+                cmap = plt.cm.get_cmap('cmr.neon')
             color_space = np.linspace(0,1,len(a10_ocv_eis)) # array from 0-1 for the colormap for plotting
             c = 0 # index of the color array
 
@@ -300,8 +321,8 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
                 append_drt_peaks(df_tau_r, drt, area, time, peaks_to_fit = 'best_id',drt_model=drt_model)
 
             # --- Appending Data to excel:
-            sheet_r = drt_model + '_fc_stb_ocv'
-            sheet_peaks = drt_model + '_fc_stb_ocv_peaks'
+            sheet_r = drt_model + '_' + mode + '_stb_ocv'
+            sheet_peaks = drt_model + '_' + mode + '_stb_ocv_peaks'
             rp_ohmic_to_excel(cell_name, folder_loc, ohmic_asr, rp_asr, sheet_r, time_list, 'Time (Hrs)', overwrite = True)
             df_tau_r_to_excel(cell_name, folder_loc, df_tau_r,sheet_peaks, overwrite = True)
 
@@ -335,7 +356,7 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
             plt.show()
 
     if resistance_plot == True:
-        sheet_r = drt_model + '_fc_stb_ocv'
+        sheet_r = drt_model + '_' + mode + '_stb_ocv'
         try:
             excel_name = '_' + cell_name + '_Data.xlsx'
             excel_file = os.path.join(folder_loc,excel_name)
@@ -349,7 +370,10 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
             rtot = df['Rtot (ohm*cm$^2$)']
 
             # --- Getting the colors for the resistance values:
-            cmap = cm.get_cmap('viridis')
+            if mode == 'fc':
+                cmap = cm.get_cmap('viridis')
+            else:
+                cmap = cm.get_cmap('cmr.neon')
             positions = [0, 0.5, 0.85]
             colors = [cmap(pos) for pos in positions]
 
@@ -382,7 +406,7 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
             print('Run this function again with plot_drt=True and with a10 = True')
 
     if drt_peaks == True:
-        sheet_peaks = drt_model + '_fc_stb_ocv_peaks'
+        sheet_peaks = drt_model + '_' + mode + '_stb_ocv_peaks'
 
         try:
             excel_name = '_' + cell_name + '_Data.xlsx'
@@ -391,7 +415,10 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
 
             # ----- plotting
             fig, ax = plt.subplots()
-            cmap = plt.cm.get_cmap('viridis')
+            if mode == 'fc':
+                cmap = plt.cm.get_cmap('viridis')
+            else:
+                cmap = plt.cm.get_cmap('cmr.neon')
             ax = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df, hue='Time (hrs)',palette = cmap,s=69, legend=False)
 
             # ---- Formatting
@@ -425,7 +452,7 @@ def fc_stb_ocv_eis(folder_loc:str, area:float, start_file:str = 'default',
             print('Most likely, the DRT has not yet been fit to the EIS and analyzed')
             print('Run this function again with DRT=True and with a10 = True')
 
-def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
+def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default', mode:str = 'fc',
                         a10:bool=True, eis:bool=True, plot_drt:bool=True, 
                         resistance_plot:bool= True, drt_peaks:bool = True, ncol:int=1,
                         legend_loc:str='outside', cbar = True,
@@ -446,6 +473,11 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
         The active cell area in cm^2
     start_file, str: (default = 'default')
         The name of the first file taken in the stability sequence
+    mode, str: (default = 'fc')
+        The mode of operation the cell was stability tested in
+        Only set to 'fc' or 'ec'
+        set to 'fc' for fuel cell mode testing
+        set to 'ec' for electrolysis cell mode testing
     a10, bool: (After 10 hours) (default = True)
         Whether or not to plot the first 10 hours of the test.
         if True, then only hours 10 onward are plotted
@@ -496,21 +528,33 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
         
     Return --> None but one or more plots are created and shown
     '''
+    # --- Setting variable for the correct mode:
+    if mode == 'fc':
+        fc_opp = True
+        nonneg = True
+
+    elif mode == 'ec':
+        fc_opp = False
+        nonneg = False
+
+    else:
+        print('mode must be set to either \'fc\' or \'ec\'')
+
     # --- Finding relavent information
-    t0 = find_start_time(folder_loc = folder_loc, start_file = start_file)
+    t0 = find_start_time(folder_loc = folder_loc, start_file = start_file, mode = mode)
     cell_name = find_cell_name(folder_loc)
         
     dta_files = [file for file in os.listdir(folder_loc) if file.endswith('.DTA')] #Makes a list of all .DTA files in the folder loc
 
     # --- Getting the end time
-    a10_bias_eis = select_stb_eis(folder_loc, dta_files, a10=True, bias = True, fc_operation = True)
+    a10_bias_eis = select_stb_eis(folder_loc, dta_files, a10=True, bias = True, fc_operation = fc_opp)
     a10_bias_eis.sort(key=lambda x:x[1])
     last = a10_bias_eis[-1][1]
     end_time = int((last-t0)/3600) #hrs
 
     if eis == True:
         if a10 == False: #Plot the EIS for the first 10 hours in 1 hr increments (the increment it is taken in)
-            f10_bias_eis = select_stb_eis(folder_loc, dta_files, a10 = False, bias = True, fc_operation = True) # Finding correct EIS files and formatting
+            f10_bias_eis = select_stb_eis(folder_loc, dta_files, a10 = False, bias = True, fc_operation = fc_opp) # Finding correct EIS files and formatting
 
             'Plotting EIS'
             for peis in f10_bias_eis:
@@ -527,11 +571,14 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
 
         if a10 == True: # Plot the DRT after 10 hours in 10 hour increments (the increment it is taken in)
             'Finding and formatting'
-            a10_bias_eis = select_stb_eis(folder_loc, dta_files, a10 = True, bias = True, fc_operation = True)
+            a10_bias_eis = select_stb_eis(folder_loc, dta_files, a10 = True, bias = True, fc_operation = fc_opp)
 
             'Setting up an array for the color map'
             if cmap == None:
-                cmap = plt.cm.get_cmap('plasma', end_time)
+                if mode == 'fc':
+                    cmap = plt.cm.get_cmap('plasma', end_time)
+                else:
+                    cmap = plt.cm.get_cmap('cividis',end_time)
             else:
                 cmap=cmap
 
@@ -568,7 +615,7 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
                     ax.tick_params(axis='both', which='major', labelsize=tick_size, width = 2, length = 6) 
                     spine_width = 2
 
-                ax.axhline(y=0,color='k', linestyle='-.',linewidth=spine_width) # plots line at 0 #D2492A is the color of Mines orange
+                ax.axhline(y=0,color='#212121', linestyle='-.',linewidth=spine_width) # plots line at 0 #D2492A is the color of Mines orange
                 ax.axis('scaled') #Keeps X and Y axis scaled 1 to 1
                 ax.spines['top'].set_visible(False)
                 ax.spines['right'].set_visible(False)
@@ -607,7 +654,7 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
         fig, ax = plt.subplots() #initializing plots for DRT
 
         if a10 == False: #Plot the DRT for the first 10 hours in 1 hr increments (the increment it is taken in)
-            f10_bias_eis = select_stb_eis(folder_loc, dta_files, a10 = False, bias = True, fc_operation = True)
+            f10_bias_eis = select_stb_eis(folder_loc, dta_files, a10 = False, bias = True, fc_operation = fc_opp)
 
             for eis in f10_bias_eis: # Calling fits and plotting
                 # --- Finding and formatting
@@ -622,7 +669,7 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
                 if drt_model == 'dual':
                     quick_dualdrt_plot(loc, area, label=label, ax=ax, peaks_to_fit = peaks_to_fit, scale_prefix = "")
                 elif drt_model == 'drtdop':
-                    plot_drtdop(loc, area, label=label, ax=ax, mark_peaks=False, scale_prefix = "")
+                    plot_drtdop(loc, area, label=label, ax=ax, mark_peaks=False, scale_prefix = "",nonneg=nonneg)
                 else:
                     print('In order to plot DRT, it must be fit with the dual or the drtdop model') 
                     print('Set drt= \'dual\' or to \'drtdop\'')
@@ -637,10 +684,13 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
                 linewidth = 2
 
             # --- Selecting eis at OCV after 10 hours of operation  
-            a10_bias_eis = select_stb_eis(folder_loc, dta_files, a10=True, bias = True, fc_operation = True)
+            a10_bias_eis = select_stb_eis(folder_loc, dta_files, a10=True, bias = True, fc_operation = fc_opp)
             
             # --- Setting up an array for the color map
-            cmap = plt.cm.get_cmap('plasma')
+            if mode == 'fc':
+                cmap = plt.cm.get_cmap('plasma', end_time)
+            else:
+                cmap = plt.cm.get_cmap('cividis',end_time)
             color_space = np.linspace(0,1,len(a10_bias_eis)) # array from 0-1 for the colormap for plotting
             c = 0 # index of the color array
 
@@ -663,7 +713,7 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
                                     mark_peaks=False, scale_prefix = "", legend = False, color=color)
                 elif drt_model == 'drtdop':
                     drt = plot_drtdop(eis[0], area, label=label, ax=ax, mark_peaks=False, scale_prefix = "",
-                                legend=False, color=color,publication=publication,linewidth=linewidth)
+                                legend=False, color=color,publication=publication,linewidth=linewidth,nonneg=nonneg)
                 else:
                     print('In order to plot DRT, it must be fit with the dual or the drtdop model') 
                     print('Set drt= \'dual\' or to \'drtdop\'')   
@@ -676,8 +726,8 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
                 append_drt_peaks(df_tau_r, drt, area, time, peaks_to_fit = 'best_id',drt_model=drt_model)
 
             # --- Appending Data to excel:
-            sheet_r = drt_model + '_fc_stb_bias'
-            sheet_peaks = drt_model + '_fc_stb_bias_peaks'
+            sheet_r = drt_model + '_' + mode + '_stb_bias'
+            sheet_peaks = drt_model + '_' + mode + '_stb_bias_peaks'
             rp_ohmic_to_excel(cell_name, folder_loc, ohmic_asr, rp_asr, sheet_r, time_list, 'Time (Hrs)', overwrite = True)
             df_tau_r_to_excel(cell_name, folder_loc, df_tau_r,sheet_peaks, overwrite = True)
 
@@ -705,7 +755,7 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
             plt.show()
 
     if resistance_plot == True:
-        sheet_r = drt_model + '_fc_stb_bias'
+        sheet_r = drt_model + '_' + mode + '_stb_bias'
         try:
             excel_name = '_' + cell_name + '_Data.xlsx'
             excel_file = os.path.join(folder_loc,excel_name)
@@ -719,7 +769,10 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
             rtot = df['Rtot (ohm*cm$^2$)']
 
             # --- Getting the colors for the resistance values:
-            cmap = cm.get_cmap('plasma')
+            if mode == 'fc':
+                cmap = plt.cm.get_cmap('plasma', end_time)
+            else:
+                cmap = plt.cm.get_cmap('cividis',end_time)
             positions = [0, 0.5, 0.85]
             colors = [cmap(pos) for pos in positions]
 
@@ -752,7 +805,7 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
             print('Run this function again with DRT=True and with a10 = True')
 
 
-    if drt_peaks == True:
+    if drt_peaks == True and mode == 'fc':
         sheet_peaks = drt_model + '_fc_stb_bias_peaks'
 
         try:
@@ -762,7 +815,10 @@ def fc_stb_bias_eis(folder_loc:str, area:float, start_file:str = 'default',
 
             # ----- plotting
             fig, ax = plt.subplots()
-            cmap = plt.cm.get_cmap('plasma')
+            if mode == 'fc':
+                cmap = plt.cm.get_cmap('plasma', end_time)
+            else:
+                cmap = plt.cm.get_cmap('cividis',end_time)
             ax = sns.scatterplot(x = 'Tau', y = 'Resistance', data = df, hue='Time (hrs)',palette = cmap,s=69, legend=False)
 
             # ---- Formatting
@@ -1014,7 +1070,7 @@ def int_drt_stb(tau_split:float, folder_loc:str, start_file:str = 'default', are
 
 
 # > > > > > Functions to aid in the main stability functions
-def find_start_time(folder_loc:str, start_file:str = 'default'):
+def find_start_time(folder_loc:str, start_file:str = 'default', mode:str = 'fc'):
     '''
     Finds the start time, in seconds from epoch, of the stability test
 
@@ -1024,17 +1080,28 @@ def find_start_time(folder_loc:str, start_file:str = 'default'):
         The folder location of the EIS files
     start_file, str: (default = 'default')
         The name of the first file taken in the stability sequence
+    mode, str: (default = 'fc')
+        mode of cell operation during testing
+        if set to 'fc' then it will look for the data corresponding to fc mode testing
+        if set to 'ec' then it will look for the data corresponding to ec mode testing
 
     Return --> t0, int, the start time in seconds from epoch
 
     '''
-    if start_file == 'default': #if another file is specified as the first file, this file will be used to find T0
+    if start_file == 'default' and mode == 'fc': #if another file is specified as the first file, this file will be used to find T0
         for file in os.listdir(folder_loc): #Finding the first file
             if file.find('Deg__#1.DTA')!=-1 and file.find('OCV')!=-1:
                 start_file = os.path.join(folder_loc,file)
 
         t0 = int(get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
     
+    elif start_file == 'default' and mode == 'ec': #if another file is specified as the first file, this file will be used to find T0
+        for file in os.listdir(folder_loc): #Finding the first file
+            if file.find('ECstability__#1.DTA')!=-1 and file.find('OCV')!=-1:
+                start_file = os.path.join(folder_loc,file)
+
+        t0 = int(get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
+
     else:
         t0 = int(get_timestamp(start_file).strftime("%s")) # Getting time stamp for first file in s from epoch, and convert to int
 
@@ -1077,11 +1144,15 @@ def select_stb_eis(folder_loc:str, dta_files:list, a10:bool = True, bias = True,
             if (file.find('PEIS')!=-1) and (file.find('TNV')!=-1):
                 bias_eis.append(file)
 
-    if bias == False:
+    if bias == False and fc_operation == True:
         for file in dta_files:
             if (file.find('PEIS')!=-1) and (file.find('n3Bias')==-1):
                 bias_eis.append(file)
-
+    
+    if bias == False and fc_operation == False:
+        for file in dta_files:
+            if (file.find('PEIS')!=-1) and (file.find('TNV')==-1):
+                bias_eis.append(file)
 
     # --- Sorting a10 and fc/ec plots
     if a10 == True and fc_operation == True: # Selecting for all a10 fuel cell eis files
@@ -1102,7 +1173,7 @@ def select_stb_eis(folder_loc:str, dta_files:list, a10:bool = True, bias = True,
     
     elif a10 == True and fc_operation == False: # Selecting for all a10 electrolysis cell eis files
         for file in bias_eis: 
-            if (file.find('_ECstability')==-1) and (file.find('ECstability10')!=-1):
+            if (file.find('_ECstability_')==-1) and (file.find('ECstability10')!=-1):
                 loc = os.path.join(folder_loc,file)
                 stb_eis.append((loc,int(get_timestamp(loc).strftime("%s"))))
         stb_eis.sort(key=lambda x:x[1])
@@ -1110,7 +1181,7 @@ def select_stb_eis(folder_loc:str, dta_files:list, a10:bool = True, bias = True,
             
     elif a10 == False and fc_operation == False: # Selecting for all f10 electrolysis cell eis files
         for file in bias_eis:
-            if (file.find('_ECstability')!=-1) and (file.find('ECstability10')==-1):
+            if (file.find('_ECstability_')!=-1) and (file.find('ECstability10')==-1):
                 stb_eis.append(file)
         sorted_stb_eis = sorted(stb_eis, key=lambda x: int((x[x.find('__#')+len('__#'):x.rfind('.DTA')]))) #Sorts numerically by time
 

@@ -504,7 +504,7 @@ def arrhenius_plots_dual(folder_loc:str, temps:list, area:float=0.5, plot_eis:bo
         # - Axis labels:
         ax1.set_xlabel('1000/T (1/K)', fontsize=ax_title_fs)
         ax2.set_xlabel('Temperature (\u00B0C)', fontsize=ax_title_fs)
-        ax1.set_ylabel('ln(R$_p$ cm$^2$/T) (\u03A9 cm$^2$/K)', fontsize=ax_title_fs)
+        ax1.set_ylabel('ln(ASR$_p$/T) (\u03A9 cm$^2$/K)', fontsize=ax_title_fs)
 
         # - Excessive formatting:
         ax1.spines['right'].set_visible(False)

@@ -348,7 +348,7 @@ def plot_polmap(polmap, group_by = None,structure_plot = False,normalize_plot = 
 
     # - Adding a title:
     if title is not None:
-        plt.title(title, fontsize=22, weight='bold')
+        plt.title(title, fontsize=28, weight='bold')
     
     fig.tight_layout()
 

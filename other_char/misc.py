@@ -24,7 +24,40 @@ import matplotlib.patches as patches
 from matplotlib.textpath import TextPath
 from matplotlib.font_manager import FontProperties
 
-mpl.rcParams['font.sans-serif'] = 'Arial'
+' Font '
+from matplotlib import font_manager
+ubuntu = '/Library/Fonts/Ubuntu-Regular.ttf'
+ubuntu_bold = '/Library/Fonts/Ubuntu-bold.ttf'
+font_manager.fontManager.addfont(ubuntu)
+font_manager.fontManager.addfont(ubuntu_bold)
+
+
+# mpl.rcParams['font.sans-serif'] = 'Ariel'
+
+' Plotting params - For Thesis '
+spine_thickness = 1.3
+txt_spine_color = '#212121'  #'#212121' # 'black' #333333
+plt.rcParams.update({
+    'axes.linewidth': spine_thickness,        # Spine thickness
+    'xtick.major.width': spine_thickness,     # Major tick thickness for x-axis
+    'ytick.major.width': spine_thickness,     # Major tick thickness for y-axis
+    'xtick.major.size': spine_thickness * 3,      # Major tick length for x-axis
+    'ytick.major.size': spine_thickness * 3,      # Major tick length for y-axis
+    
+    'axes.grid': False,           # Add grid lines
+    'grid.alpha': 0.4,           # Grid lines transparency
+    
+    'font.family': 'sans-serif',
+
+    'text.color': txt_spine_color,                   # Color for all text
+    'axes.labelcolor': txt_spine_color,              # Color for axis labels
+    'axes.edgecolor': txt_spine_color,               # Color for axis spines
+    'xtick.color': txt_spine_color,                  # Color for x-axis tick labels and ticks
+    'ytick.color': txt_spine_color,                  # Color for y-axis tick labels and ticks
+})
+
+mpl.rcParams['font.sans-serif'] = 'Ubuntu'
+
 
 
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
@@ -642,13 +675,17 @@ def haadf_eds_map(folder_loc:str, font:str = 'Arial',element_list:list = None,
     
     if len(data) == 9:
         fig,axs = plt.subplots(3,3)
+
+    if len(data) == 10:
+        fig,axs = plt.subplots(2,5)
+        fig.set_size_inches(8, 5.5)
     
-    if len(data) > 9 and len(data) <= 12:
+    if len(data) > 10 and len(data) <= 12:
         fig,axs = plt.subplots(2,6)
         fig.set_size_inches(14, 5)
 
     # --- Plotting
-    title_size = 28 #'xx-large'
+    title_size = 24 #'xx-large', 28
     for idx, ax in enumerate(axs.reshape(-1)):
         if idx <= len(data)-1 and data[idx].find('HAADF') != -1:
             image_loc = os.path.join(folder_loc, data[idx])
@@ -669,10 +706,9 @@ def haadf_eds_map(folder_loc:str, font:str = 'Arial',element_list:list = None,
                 image_height_pixels = df.shape[0]
                 sb_length_pxls = pxl_nm * sb_length
 
-
                 # - backround box
-                x_anchor_bg = image_width_pixels * 0.7
-                y_anchor_bg = image_height_pixels * 0.75
+                x_anchor_bg = image_width_pixels * 0.57
+                y_anchor_bg = image_height_pixels * 0.85
                 bg_length_offset = 30 # % of the scalebar length
                 bg_width_offset = 50 # % of the background length
                 bg_length = sb_length_pxls * (1 + bg_length_offset / 100)
@@ -682,7 +718,7 @@ def haadf_eds_map(folder_loc:str, font:str = 'Arial',element_list:list = None,
                 
                 # - Scalebar
                 x_anchor = ((bg_length - sb_length_pxls) / 2) + x_anchor_bg
-                y_anchor = y_anchor_bg + sb_length * 10
+                y_anchor = y_anchor_bg + sb_length
 
                 sb = patches.Rectangle((x_anchor, y_anchor), sb_length_pxls, sb_length_pxls*0.1, linewidth=1, edgecolor='none', facecolor='w')
 
@@ -697,12 +733,12 @@ def haadf_eds_map(folder_loc:str, font:str = 'Arial',element_list:list = None,
                 bg_center_x = x_anchor_bg + bg_length / 2
                 bg_center_y = y_anchor_bg + bg_height / 3
 
-                ax.text(bg_center_x, bg_center_y, txt, ha='center', va='top', fontsize=17, color='w')
+                ax.text(bg_center_x, bg_center_y, txt, ha='center', va='center', fontsize=13, color='w')
 
                 ax.add_patch(sb_background)
                 ax.add_patch(sb)
 
-            plt.tight_layout()
+            # plt.tight_layout()
         
         elif idx <= len(data)-1:
             # --- Converting the data to a DataFrame and obtaining the element name
@@ -729,10 +765,12 @@ def haadf_eds_map(folder_loc:str, font:str = 'Arial',element_list:list = None,
 
             ax.set_title(element,family=font,size=title_size)
 
-            fig.tight_layout()
+            # fig.tight_layout()
 
         elif idx > len(data)-1:
             ax.set_visible(False)
+
+    plt.tight_layout()
 
     if save_fig is not None:
         fmat = save_fig.split('.', 1)[-1]
