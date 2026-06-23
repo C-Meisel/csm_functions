@@ -17,7 +17,9 @@ The package reflects the analysis workflow behind my PhD research on proton-cond
 
 ## Requirements
 
-Python 3, with numpy, matplotlib, and the standard scientific-Python stack. [FILL IN: confirm any additional dependencies, for example pandas or an EIS-specific library.]
+Python 3, with numpy, pandas, matplotlib, seaborn, openpyxl (used to read Excel files), and cmasher (used for perceptually uniform colormaps).
+
+The DRT analysis and resistance functions in eis_hyb/ additionally require the hybrid-drt package, developed by a colleague and available at https://github.com/jdhuang-csm/hybrid-drt. It is not on the standard package index, so install it from that repository before using those functions.
 
 ## Status
 
