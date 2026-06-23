@@ -1,0 +1,25 @@
+· GITIGNORE
+# Byte-compiled and optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+ 
+# Distribution and packaging
+build/
+dist/
+*.egg-info/
+*.egg
+ 
+# Virtual environments
+.venv/
+venv/
+env/
+ 
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+ 
+# macOS system files
+.DS_Store
+ 
+# Editor settings (remove this line if you want to share VS Code settings)
+.vscode/
